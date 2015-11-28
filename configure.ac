@@ -121,6 +121,11 @@ AC_SUBST(GMIME_CFLAGS)
 AC_SUBST(GMIME_LIBS)
 gmime_version="`$PKG_CONFIG --modversion gmime-2.6`"
 
+# json-glib
+PKG_CHECK_MODULES(JSON_GLIB,json-glib-1.0 >= 1.0)
+AC_SUBST(JSON_GLIB_CFLAGS)
+AC_SUBST(JSON_GLIB_LIBS)
+json_glib_version="`$PKG_CONFIG --modversion json-glib-1.0`"
 
 # xapian checking - we need 1.2.x at least
 AC_CHECK_PROG(XAPIAN_CONFIG,xapian-config,xapian-config,no)
@@ -283,6 +288,7 @@ echo "mu version                           : $VERSION"
 echo
 echo "Xapian version                       : $xapian_version"
 echo "GLib version                         : $glib_version"
+echo "Json-Glib version                    : $json_glib_version"
 echo "GMime version                        : $gmime_version"
 
 AM_COND_IF([BUILD_GUI],[

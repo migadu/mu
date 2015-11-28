@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#include <json-glib/json-glib.h>
+
 #include "mu-msg.h"
 #include "mu-str.h"
 #include "mu-date.h"
@@ -459,7 +461,7 @@ output_plain_fields (MuMsg *msg, const char *fields,
 	int		nonempty;
 
 	g_return_if_fail (fields);
-	
+
 	for (myfields = fields, nonempty = 0; *myfields; ++myfields) {
 
 		MuMsgFieldId mfid;
@@ -544,7 +546,79 @@ output_xml (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 	print_attr_xml ("msgid", mu_msg_get_msgid (msg));
 	print_attr_xml ("path", mu_msg_get_path (msg));
 	print_attr_xml ("maildir", mu_msg_get_maildir (msg));
+	print_attr_xml ("flags", mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
+
 	g_print ("\t</message>\n");
+
+	return TRUE;
+}
+
+
+static gboolean
+output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
+{
+	const char* body;
+	MuMsgOptions msgopts;
+	char *summ;
+
+	JsonBuilder *builder = json_builder_new ();
+
+  json_builder_begin_object (builder);
+
+  json_builder_set_member_name (builder, "from");
+  json_builder_add_string_value (builder, mu_msg_get_from (msg));
+
+  json_builder_set_member_name (builder, "subject");
+  json_builder_add_string_value (builder, mu_msg_get_subject (msg));
+
+  json_builder_set_member_name (builder, "msgid");
+  json_builder_add_string_value (builder, mu_msg_get_msgid (msg));
+
+	json_builder_set_member_name (builder, "date");
+ 	json_builder_add_int_value (builder, (unsigned)mu_msg_get_date (msg));
+
+  json_builder_set_member_name (builder, "path");
+  json_builder_add_string_value (builder, mu_msg_get_path (msg));
+
+  json_builder_set_member_name (builder, "maildir");
+  json_builder_add_string_value (builder, mu_msg_get_maildir (msg));
+
+  json_builder_set_member_name (builder, "size");
+  json_builder_add_int_value (builder, (unsigned)mu_msg_get_size (msg));
+
+  json_builder_set_member_name (builder, "flags");
+  json_builder_add_string_value (builder,
+  	mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
+
+	msgopts = mu_config_get_msg_options (opts);
+	body = mu_msg_get_body_text(msg, msgopts);
+
+	if (!body)
+		body = mu_msg_get_body_html(msg, msgopts);
+
+	if (body)
+		summ = mu_str_summarize (body, (unsigned)opts->summary_len);
+	else
+		summ = NULL;
+
+	json_builder_set_member_name (builder, "preview");
+	if (summ) {
+		json_builder_add_string_value (builder, summ);
+		g_free(summ);
+	} else
+		json_builder_add_string_value (builder, "");
+
+  json_builder_end_object (builder);
+
+  JsonGenerator *gen = json_generator_new ();
+  JsonNode * root = json_builder_get_root (builder);
+  json_generator_set_root (gen, root);
+	g_print ("%s\n", json_generator_to_data (gen, NULL));
+
+
+  json_node_free (root);
+  g_object_unref (gen);
+  g_object_unref (builder);
 
 	return TRUE;
 }
@@ -563,6 +637,8 @@ output_prepare (MuConfig *opts, GError **err)
 			return output_link;
 	case MU_CONFIG_FORMAT_PLAIN:
 		return output_plain;
+	case MU_CONFIG_FORMAT_JSON:
+		return output_json;
 	case MU_CONFIG_FORMAT_XML:
 		g_print ("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
 		g_print ("<messages>\n");
@@ -686,6 +762,7 @@ format_params_valid (MuConfig *opts, GError **err)
 	case MU_CONFIG_FORMAT_SEXP:
 	case MU_CONFIG_FORMAT_LINKS:
 	case MU_CONFIG_FORMAT_XML:
+	case MU_CONFIG_FORMAT_JSON:
 	case MU_CONFIG_FORMAT_XQUERY:
 		if (opts->exec) {
 			mu_util_g_set_error

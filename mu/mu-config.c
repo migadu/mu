@@ -52,6 +52,7 @@ get_output_format (const char *formatstr)
 		{"plain",	MU_CONFIG_FORMAT_PLAIN},
 		{"sexp",	MU_CONFIG_FORMAT_SEXP},
 		{"xml",		MU_CONFIG_FORMAT_XML},
+		{"json",	MU_CONFIG_FORMAT_JSON},
 		{"xquery",	MU_CONFIG_FORMAT_XQUERY}
 	};
 
@@ -224,7 +225,7 @@ config_options_group_find (void)
 		{"clearlinks", 0, 0, G_OPTION_ARG_NONE, &MU_CONFIG.clearlinks,
 		 "clear old links before filling a linksdir (false)", NULL},
 		{"format", 'o', 0, G_OPTION_ARG_STRING, &MU_CONFIG.formatstr,
-		 "output format ('plain'(*), 'links', 'xml',"
+		 "output format ('plain'(*), 'links', 'xml', 'json'"
 		 "'sexp', 'xquery')", "<format>"},
 		{"summary-len", 0, 0, G_OPTION_ARG_INT, &MU_CONFIG.summary_len,
 		 "use up to <n> lines for the summary, or 0 for none (0)",

@@ -55,6 +55,7 @@ enum _MuConfigFormat {
 	MU_CONFIG_FORMAT_LINKS,		/* output as symlinks */
 	MU_CONFIG_FORMAT_XML,		/* output xml */
 	MU_CONFIG_FORMAT_XQUERY,	/* output the xapian query */
+	MU_CONFIG_FORMAT_JSON,		/* output json */
 
 	MU_CONFIG_FORMAT_EXEC		/* execute some command */
 };
