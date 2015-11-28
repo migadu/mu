@@ -554,12 +554,28 @@ output_xml (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 }
 
 
+// static gchar* preview(MuMsg *msg, MuConfig *opts) {
+// 	const char* body;
+// 	MuMsgOptions msgopts;
+// 	char *summ;
+
+// 	msgopts = mu_config_get_msg_options (opts);
+// 	body = mu_msg_get_body_text(msg, msgopts);
+
+// 	if (!body)
+// 		body = mu_msg_get_body_html(msg, msgopts);
+// 	if (body)
+// 		summ = mu_str_summarize (body, (unsigned)opts->summary_len);
+// 	else
+// 		summ = NULL;
+// }
+
 static gboolean
 output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 {
-	const char* body;
-	MuMsgOptions msgopts;
-	char *summ;
+	// const char* body;
+	// MuMsgOptions msgopts;
+	// char *summ;
 
 	JsonBuilder *builder = json_builder_new ();
 
@@ -590,23 +606,23 @@ output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
   json_builder_add_string_value (builder,
   	mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
 
-	msgopts = mu_config_get_msg_options (opts);
-	body = mu_msg_get_body_text(msg, msgopts);
+	// msgopts = mu_config_get_msg_options (opts);
+	// body = mu_msg_get_body_text(msg, msgopts);
 
-	if (!body)
-		body = mu_msg_get_body_html(msg, msgopts);
+	// if (!body)
+	// 	body = mu_msg_get_body_html(msg, msgopts);
 
-	if (body)
-		summ = mu_str_summarize (body, (unsigned)opts->summary_len);
-	else
-		summ = NULL;
+	// if (body)
+	// 	summ = mu_str_summarize (body, (unsigned)opts->summary_len);
+	// else
+	// 	summ = NULL;
 
-	json_builder_set_member_name (builder, "preview");
-	if (summ) {
-		json_builder_add_string_value (builder, summ);
-		g_free(summ);
-	} else
-		json_builder_add_string_value (builder, "");
+	// json_builder_set_member_name (builder, "preview");
+	// if (summ) {
+	// 	json_builder_add_string_value (builder, summ);
+	// 	g_free(summ);
+	// } else
+	// 	json_builder_add_string_value (builder, "");
 
   json_builder_end_object (builder);
 
@@ -614,7 +630,6 @@ output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
   JsonNode * root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
 	g_print ("%s\n", json_generator_to_data (gen, NULL));
-
 
   json_node_free (root);
   g_object_unref (gen);
