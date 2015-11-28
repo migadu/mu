@@ -20,7 +20,7 @@ include $(top_srcdir)/gtest.mk
 # before decending into tests/
 SUBDIRS= . tests
 
-AM_CPPFLAGS=-I${top_srcdir}/lib $(GLIB_CFLAGS) $(JSON_GLIB_CFLAGS)
+AM_CPPFLAGS=-I${top_srcdir}/lib $(GLIB_CFLAGS) $(JSON_GLIB_CFLAGS) $(GMIME_CFLAGS)
 
 # don't use -Werror, as it might break on other compilers
 # use -Wno-unused-parameters, because some callbacks may not
@@ -57,7 +57,8 @@ mu-help-strings.h: mu-help-strings.txt mu-help-strings.awk
 mu_LDADD=				\
 	${top_builddir}/lib/libmu.la    \
 	$(GLIB_LIBS)		\
-	$(JSON_GLIB_LIBS)
+	$(JSON_GLIB_LIBS) \
+	$(GMIME_LIBS)
 
 EXTRA_DIST=				\
 	mu-help-strings.awk		\

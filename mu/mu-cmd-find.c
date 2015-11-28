@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#include <gmime/gmime.h>
 #include <json-glib/json-glib.h>
 
 #include "mu-msg.h"
@@ -540,8 +541,7 @@ output_xml (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 	print_attr_xml ("to", mu_msg_get_to (msg));
 	print_attr_xml ("cc", mu_msg_get_cc (msg));
 	print_attr_xml ("subject", mu_msg_get_subject (msg));
-	g_print ("\t\t<date>%u</date>\n",
-		 (unsigned)mu_msg_get_date (msg));
+	g_print ("\t\t<date>%u</date>\n", (unsigned)mu_msg_get_date (msg));
 	g_print ("\t\t<size>%u</size>\n", (unsigned)mu_msg_get_size (msg));
 	print_attr_xml ("msgid", mu_msg_get_msgid (msg));
 	print_attr_xml ("path", mu_msg_get_path (msg));
@@ -554,44 +554,131 @@ output_xml (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 }
 
 
-// static gchar* preview(MuMsg *msg, MuConfig *opts) {
-// 	const char* body;
-// 	MuMsgOptions msgopts;
-// 	char *summ;
+// Forward declaration
+static void
+json_add_address_list (JsonBuilder *builder, InternetAddressList* list);
 
-// 	msgopts = mu_config_get_msg_options (opts);
-// 	body = mu_msg_get_body_text(msg, msgopts);
 
-// 	if (!body)
-// 		body = mu_msg_get_body_html(msg, msgopts);
-// 	if (body)
-// 		summ = mu_str_summarize (body, (unsigned)opts->summary_len);
-// 	else
-// 		summ = NULL;
-// }
-
-static gboolean
-output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
+static void
+json_add_address (JsonBuilder *builder, InternetAddress *ia)
 {
-	// const char* body;
-	// MuMsgOptions msgopts;
-	// char *summ;
+	if (INTERNET_ADDRESS_IS_GROUP(ia)) {
+    InternetAddressGroup *group = INTERNET_ADDRESS_GROUP(ia);
+    InternetAddressList *group_list = internet_address_group_get_members(group);
+    json_add_address_list(builder, group_list);
+	} else if (INTERNET_ADDRESS_IS_MAILBOX(ia)) {
+    InternetAddressMailbox *mailbox = INTERNET_ADDRESS_MAILBOX(ia);
+    const char *addr_name = internet_address_get_name(ia);
+  	const char *addr_address = internet_address_mailbox_get_addr(mailbox);
 
+  	if (!addr_name && !addr_address)
+  		return;
+
+  	json_builder_begin_object (builder);
+
+    if (addr_name) {
+  		json_builder_set_member_name (builder, "name");
+  		json_builder_add_string_value (builder, addr_name);
+  	}
+
+  	if (addr_address) {
+  		json_builder_set_member_name (builder, "address");
+  		json_builder_add_string_value (builder, addr_address);
+  	}
+
+  	json_builder_end_object (builder);
+  }
+}
+
+
+static void
+json_add_address_list (JsonBuilder *builder, InternetAddressList* list)
+{
+	int size;
+	int i;
+
+  if (list) {
+    size = internet_address_list_length(list);
+  	for (i = 0; i < size; i++)
+    	json_add_address(builder, internet_address_list_get_address(list, i));
+    g_object_unref(list);
+  }
+}
+
+
+static void
+json_add_recipients(JsonBuilder *builder, MuMsg *msg)
+{
+	InternetAddressList *addr_from = internet_address_list_parse_string( mu_msg_get_from (msg) );
+	if (addr_from) {
+  	json_builder_set_member_name (builder, "from");
+		json_builder_begin_array (builder);
+		json_add_address_list(builder, addr_from);
+  	json_builder_end_array (builder);
+  }
+
+	InternetAddressList *addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
+	if (addr_to) {
+	  json_builder_set_member_name (builder, "to");
+		json_builder_begin_array (builder);
+		json_add_address_list(builder, addr_to);
+	  json_builder_end_array (builder);
+	}
+
+	InternetAddressList *addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
+	if (addr_cc) {
+	  json_builder_set_member_name (builder, "cc");
+		json_builder_begin_array (builder);
+		json_add_address_list(builder, addr_cc);
+	  json_builder_end_array (builder);
+	}
+}
+
+
+static void
+json_add_subject(JsonBuilder *builder, MuMsg *msg)
+{
+	const char *subject;
+	subject = mu_msg_get_subject (msg);
+	if (subject) {
+  	json_builder_set_member_name (builder, "subject");
+  	json_builder_add_string_value (builder, subject);
+  }
+}
+
+
+static void
+json_add_flags(JsonBuilder *builder, MuMsg *msg)
+{
+	MuFlags flags;
+	flags = mu_msg_get_flags (msg);
+	const char *flags_str;
+	if (flags) {
+		flags_str = mu_flags_to_str_s (flags, (MuFlagType)MU_FLAG_TYPE_ANY);
+		if (flags_str) {
+	  	json_builder_set_member_name (builder, "flags");
+  		json_builder_add_string_value (builder, flags_str);
+  	}
+  }
+}
+
+
+static JsonBuilder*
+get_message_json (MuMsg *msg)
+{
 	JsonBuilder *builder = json_builder_new ();
-
   json_builder_begin_object (builder);
 
-  json_builder_set_member_name (builder, "from");
-  json_builder_add_string_value (builder, mu_msg_get_from (msg));
+  json_add_recipients(builder, msg);
+  json_add_subject(builder, msg);
 
-  json_builder_set_member_name (builder, "subject");
-  json_builder_add_string_value (builder, mu_msg_get_subject (msg));
-
-  json_builder_set_member_name (builder, "msgid");
-  json_builder_add_string_value (builder, mu_msg_get_msgid (msg));
+	json_builder_set_member_name (builder, "msgid");
+	json_builder_add_string_value (builder, mu_msg_get_msgid (msg));
 
 	json_builder_set_member_name (builder, "date");
  	json_builder_add_int_value (builder, (unsigned)mu_msg_get_date (msg));
+
+  json_add_flags(builder, msg);
 
   json_builder_set_member_name (builder, "path");
   json_builder_add_string_value (builder, mu_msg_get_path (msg));
@@ -602,41 +689,26 @@ output_json (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
   json_builder_set_member_name (builder, "size");
   json_builder_add_int_value (builder, (unsigned)mu_msg_get_size (msg));
 
-  json_builder_set_member_name (builder, "flags");
-  json_builder_add_string_value (builder,
-  	mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
-
-	// msgopts = mu_config_get_msg_options (opts);
-	// body = mu_msg_get_body_text(msg, msgopts);
-
-	// if (!body)
-	// 	body = mu_msg_get_body_html(msg, msgopts);
-
-	// if (body)
-	// 	summ = mu_str_summarize (body, (unsigned)opts->summary_len);
-	// else
-	// 	summ = NULL;
-
-	// json_builder_set_member_name (builder, "preview");
-	// if (summ) {
-	// 	json_builder_add_string_value (builder, summ);
-	// 	g_free(summ);
-	// } else
-	// 	json_builder_add_string_value (builder, "");
-
   json_builder_end_object (builder);
+  return builder;
+}
 
+
+static gboolean
+output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
+	JsonBuilder *builder = get_message_json (msg);
   JsonGenerator *gen = json_generator_new ();
   JsonNode * root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
+
 	g_print ("%s\n", json_generator_to_data (gen, NULL));
 
   json_node_free (root);
   g_object_unref (gen);
   g_object_unref (builder);
-
-	return TRUE;
+  return TRUE;
 }
+
 
 
 static OutputFunc*
