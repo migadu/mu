@@ -563,13 +563,21 @@ static void
 json_add_address (JsonBuilder *builder, InternetAddress *ia)
 {
 	if (INTERNET_ADDRESS_IS_GROUP(ia)) {
-    InternetAddressGroup *group = INTERNET_ADDRESS_GROUP(ia);
-    InternetAddressList *group_list = internet_address_group_get_members(group);
+    InternetAddressGroup *group;
+    InternetAddressList *group_list;
+
+    group = INTERNET_ADDRESS_GROUP(ia);
+    group_list = internet_address_group_get_members(group);
+
     json_add_address_list(builder, group_list);
 	} else if (INTERNET_ADDRESS_IS_MAILBOX(ia)) {
-    InternetAddressMailbox *mailbox = INTERNET_ADDRESS_MAILBOX(ia);
-    const char *addr_name = internet_address_get_name(ia);
-  	const char *addr_address = internet_address_mailbox_get_addr(mailbox);
+    InternetAddressMailbox *mailbox;
+    const char *addr_name;
+    const char *addr_address;
+
+    mailbox = INTERNET_ADDRESS_MAILBOX(ia);
+    addr_name = internet_address_get_name(ia);
+  	addr_address = internet_address_mailbox_get_addr(mailbox);
 
   	if (!addr_name && !addr_address)
   		return;
@@ -609,7 +617,11 @@ json_add_address_list (JsonBuilder *builder, InternetAddressList* list)
 static void
 json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 {
-	InternetAddressList *addr_from = internet_address_list_parse_string( mu_msg_get_from (msg) );
+	InternetAddressList *addr_from;
+	InternetAddressList *addr_to;
+	InternetAddressList *addr_cc;
+
+	addr_from = internet_address_list_parse_string( mu_msg_get_from (msg) );
 	if (addr_from) {
   	json_builder_set_member_name (builder, "from");
 		json_builder_begin_array (builder);
@@ -617,7 +629,7 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
   	json_builder_end_array (builder);
   }
 
-	InternetAddressList *addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
+	addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
 	if (addr_to) {
 	  json_builder_set_member_name (builder, "to");
 		json_builder_begin_array (builder);
@@ -625,7 +637,7 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 	  json_builder_end_array (builder);
 	}
 
-	InternetAddressList *addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
+	addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
 	if (addr_cc) {
 	  json_builder_set_member_name (builder, "cc");
 		json_builder_begin_array (builder);
@@ -651,8 +663,10 @@ static void
 json_add_flags(JsonBuilder *builder, MuMsg *msg)
 {
 	MuFlags flags;
-	flags = mu_msg_get_flags (msg);
 	const char *flags_str;
+
+	flags = mu_msg_get_flags (msg);
+
 	if (flags) {
 		flags_str = mu_flags_to_str_s (flags, (MuFlagType)MU_FLAG_TYPE_ANY);
 		if (flags_str) {
@@ -696,12 +710,19 @@ get_message_json (MuMsg *msg)
 
 static gboolean
 output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
-	JsonBuilder *builder = get_message_json (msg);
-  JsonGenerator *gen = json_generator_new ();
-  JsonNode * root = json_builder_get_root (builder);
+	JsonBuilder *builder;
+  JsonNode *root;
+  JsonGenerator *gen;
+  char *json_str;
+
+	builder = get_message_json (msg);
+  gen = json_generator_new ();
+  root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
 
-	g_print ("%s, ", json_generator_to_data (gen, NULL));
+  json_str = json_generator_to_data (gen, NULL);
+	g_print ("%s, ", json_str);
+	g_free(json_str);
 
   json_node_free (root);
   g_object_unref (gen);
