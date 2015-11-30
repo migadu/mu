@@ -701,14 +701,13 @@ output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
   JsonNode * root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
 
-	g_print ("%s\n", json_generator_to_data (gen, NULL));
+	g_print ("%s, ", json_generator_to_data (gen, NULL));
 
   json_node_free (root);
   g_object_unref (gen);
   g_object_unref (builder);
   return TRUE;
 }
-
 
 
 static OutputFunc*
@@ -725,6 +724,7 @@ output_prepare (MuConfig *opts, GError **err)
 	case MU_CONFIG_FORMAT_PLAIN:
 		return output_plain;
 	case MU_CONFIG_FORMAT_JSON:
+		g_print ("[ ");
 		return output_json;
 	case MU_CONFIG_FORMAT_XML:
 		g_print ("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
@@ -742,8 +742,16 @@ output_prepare (MuConfig *opts, GError **err)
 static void
 output_finish (MuConfig *opts)
 {
-	if (opts->format == MU_CONFIG_FORMAT_XML)
-		g_print ("</messages>\n");
+	switch (opts->format) {
+		case MU_CONFIG_FORMAT_XML:
+			g_print ("</messages>\n");
+			return;
+		case MU_CONFIG_FORMAT_JSON:
+			g_print ("null ]\n");
+			return;
+		default:
+			return;
+	}
 }
 
 
@@ -768,6 +776,7 @@ output_query_results (MuMsgIter *iter, MuConfig *opts, GError **err)
 		msg = get_message (iter, opts->after);
 		if (!msg)
 			break;
+
 		/* { */
 		/* 	const char* thread_id; */
 		/* 	thread_id = mu_msg_iter_get_thread_id (iter); */
