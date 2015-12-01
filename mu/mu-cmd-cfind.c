@@ -45,14 +45,14 @@
 static gchar*
 guess_last_name (const char *name)
 {
-	const gchar *lastsp;
+        const gchar *lastsp;
 
-	if (!name)
-		return g_strdup ("");
+        if (!name)
+                return g_strdup ("");
 
-	lastsp = g_strrstr (name, " ");
+        lastsp = g_strrstr (name, " ");
 
-	return g_strdup (lastsp ? lastsp + 1 : "");
+        return g_strdup (lastsp ? lastsp + 1 : "");
 }
 
 /**
@@ -67,17 +67,17 @@ guess_last_name (const char *name)
 static gchar*
 guess_first_name (const char *name)
 {
-	const gchar *lastsp;
+        const gchar *lastsp;
 
-	if (!name)
-		return g_strdup ("");
+        if (!name)
+                return g_strdup ("");
 
-	lastsp = g_strrstr (name, " ");
+        lastsp = g_strrstr (name, " ");
 
-	if (lastsp)
-		return g_strndup (name, lastsp - name);
-	else
-		return g_strdup (name);
+        if (lastsp)
+                return g_strndup (name, lastsp - name);
+        else
+                return g_strdup (name);
 }
 
 /**
@@ -93,63 +93,63 @@ guess_first_name (const char *name)
 static gchar*
 cleanup_str (const char* str)
 {
-	gchar *s;
-	const gchar *cur;
-	unsigned i;
+        gchar *s;
+        const gchar *cur;
+        unsigned i;
 
-	if (mu_str_is_empty(str))
-		return g_strdup ("");
+        if (mu_str_is_empty(str))
+                return g_strdup ("");
 
-	s = g_new0 (char, strlen(str) + 1);
+        s = g_new0 (char, strlen(str) + 1);
 
-	for (cur = str, i = 0; *cur; ++cur) {
-		if (ispunct(*cur) || isspace(*cur))
-			continue;
-		else
-			s[i++] = *cur;
-	}
+        for (cur = str, i = 0; *cur; ++cur) {
+                if (ispunct(*cur) || isspace(*cur))
+                        continue;
+                else
+                        s[i++] = *cur;
+        }
 
-	return s;
+        return s;
 }
 
 
 static gchar*
 guess_nick (const char* name)
 {
-	gchar *fname, *lname, *nick;
-	gchar initial[7];
+        gchar *fname, *lname, *nick;
+        gchar initial[7];
 
-	fname	  = guess_first_name (name);
-	lname	  = guess_last_name (name);
+        fname     = guess_first_name (name);
+        lname     = guess_last_name (name);
 
-	/* if there's no last name, use first name as the nick */
-	if (mu_str_is_empty(fname) || mu_str_is_empty(lname)) {
-		g_free (lname);
-		nick = fname;
-		goto leave;
-	}
+        /* if there's no last name, use first name as the nick */
+        if (mu_str_is_empty(fname) || mu_str_is_empty(lname)) {
+                g_free (lname);
+                nick = fname;
+                goto leave;
+        }
 
-	memset (initial, 0, sizeof(initial));
-	/* couldn't we get an initial for the last name? */
-	if (g_unichar_to_utf8 (g_utf8_get_char (lname), initial) == 0) {
-		g_free (lname);
-		nick = fname;
-		goto leave;
-	}
+        memset (initial, 0, sizeof(initial));
+        /* couldn't we get an initial for the last name? */
+        if (g_unichar_to_utf8 (g_utf8_get_char (lname), initial) == 0) {
+                g_free (lname);
+                nick = fname;
+                goto leave;
+        }
 
-	nick = g_strdup_printf ("%s%s", fname, initial);
-	g_free (fname);
-	g_free (lname);
+        nick = g_strdup_printf ("%s%s", fname, initial);
+        g_free (fname);
+        g_free (lname);
 
 leave:
-	{
-		gchar *tmp;
-		tmp = cleanup_str (nick);
-		g_free (nick);
-		nick = tmp;
-	}
+        {
+                gchar *tmp;
+                tmp = cleanup_str (nick);
+                g_free (nick);
+                nick = tmp;
+        }
 
-	return nick;
+        return nick;
 }
 
 
@@ -178,7 +178,7 @@ print_footer (MuConfigFormat format)
 {
         switch (format) {
         case MU_CONFIG_FORMAT_JSON:
-                g_print ("NULL]");
+                g_print ("null]");
                 break;
         default:
                 break;
@@ -225,25 +225,25 @@ each_contact_mutt_alias (const char *email, const char *name)
 static void
 each_contact_wl (const char *email, const char *name)
 {
-	gchar *nick;
+        gchar *nick;
 
-	if (!name)
-		return;
+        if (!name)
+                return;
 
-	nick = guess_nick (name);
-	mu_util_print_encoded ("%s \"%s\" \"%s\"\n",
-			       email, nick, name);
-	g_free (nick);
+        nick = guess_nick (name);
+        mu_util_print_encoded ("%s \"%s\" \"%s\"\n",
+                               email, nick, name);
+        g_free (nick);
 }
 
 
 static void
 each_contact_org_contact (const char *email, const char *name)
 {
-	if (name)
-		mu_util_print_encoded (
-			"* %s\n:PROPERTIES:\n:EMAIL: %s\n:END:\n\n",
-			name, email);
+        if (name)
+                mu_util_print_encoded (
+                        "* %s\n:PROPERTIES:\n:EMAIL: %s\n:END:\n\n",
+                        name, email);
 }
 
 
@@ -253,27 +253,27 @@ each_contact_org_contact (const char *email, const char *name)
 static void
 print_csv_field (const char *str)
 {
-	char *s;
+        char *s;
 
-	if (!str)
-		return;
+        if (!str)
+                return;
 
-	s = mu_str_replace (str, "\"", "\"\"");
-	if (strchr (s, ','))
-		mu_util_print_encoded ("\"%s\"", s);
-	else
-		mu_util_print_encoded ("%s", s);
+        s = mu_str_replace (str, "\"", "\"\"");
+        if (strchr (s, ','))
+                mu_util_print_encoded ("\"%s\"", s);
+        else
+                mu_util_print_encoded ("%s", s);
 
-	g_free (s);
+        g_free (s);
 }
 
 static void
 each_contact_csv (const char *email, const char *name)
 {
-	print_csv_field (name);
-	mu_util_print_encoded (",");
-	print_csv_field (email);
-	mu_util_print_encoded ("\n");
+        print_csv_field (name);
+        mu_util_print_encoded (",");
+        print_csv_field (email);
+        mu_util_print_encoded ("\n");
 }
 
 
@@ -281,27 +281,27 @@ each_contact_csv (const char *email, const char *name)
 static void
 print_plain (const char *email, const char *name, gboolean color)
 {
-	if (name) {
-		if (color) fputs (MU_COLOR_MAGENTA, stdout);
-		mu_util_fputs_encoded (name, stdout);
-		fputs (" ", stdout);
-	}
+        if (name) {
+                if (color) fputs (MU_COLOR_MAGENTA, stdout);
+                mu_util_fputs_encoded (name, stdout);
+                fputs (" ", stdout);
+        }
 
-	if (color)
-		fputs (MU_COLOR_GREEN, stdout);
+        if (color)
+                fputs (MU_COLOR_GREEN, stdout);
 
-	mu_util_fputs_encoded (email, stdout);
+        mu_util_fputs_encoded (email, stdout);
 
-	if (color)
-		fputs (MU_COLOR_DEFAULT, stdout);
+        if (color)
+                fputs (MU_COLOR_DEFAULT, stdout);
 
-	fputs ("\n", stdout);
+        fputs ("\n", stdout);
 }
 
 struct _ECData {
-	MuConfigFormat format;
-	gboolean color, personal;
-	time_t after;
+        MuConfigFormat format;
+        gboolean color, personal;
+        time_t after;
 };
 typedef struct _ECData ECData;
 
