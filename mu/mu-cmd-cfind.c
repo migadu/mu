@@ -268,6 +268,16 @@ print_csv_field (const char *str)
 }
 
 static void
+each_contact_json (const char *email, const char *name)
+{
+        mu_util_print_encoded ("{name: \"");
+        print_csv_field (name);
+        mu_util_print_encoded ("\", address: \"");
+        print_csv_field (email);
+        mu_util_print_encoded ("\"},");
+}
+
+static void
 each_contact_csv (const char *email, const char *name)
 {
         print_csv_field (name);
