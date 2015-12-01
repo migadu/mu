@@ -725,7 +725,7 @@ output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
   json_generator_set_root (gen, root);
 
   json_str = json_generator_to_data (gen, NULL);
-	// g_print ("%s, ", json_str);
+	g_print ("%s, ", json_str);
 	g_free(json_str);
 
   json_node_free (root);
