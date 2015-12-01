@@ -626,8 +626,9 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 		json_builder_begin_array (builder);
 		json_add_address_list(builder, addr_from);
   	json_builder_end_array (builder);
+  	g_object_unref(addr_from);
   }
-  g_object_unref(addr_from);
+
 
 	addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
 	if (addr_to) {
@@ -635,8 +636,8 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 		json_builder_begin_array (builder);
 		json_add_address_list(builder, addr_to);
 	  json_builder_end_array (builder);
+	  g_object_unref(addr_to);
 	}
-	g_object_unref(addr_to);
 
 	addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
 	if (addr_cc) {
@@ -644,8 +645,8 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 		json_builder_begin_array (builder);
 		json_add_address_list(builder, addr_cc);
 	  json_builder_end_array (builder);
+	  g_object_unref(addr_cc);
 	}
-	g_object_unref(addr_cc);
 
 }
 
