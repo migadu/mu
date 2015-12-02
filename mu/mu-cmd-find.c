@@ -48,114 +48,114 @@
 #include "mu-threader.h"
 
 typedef gboolean (OutputFunc) (MuMsg *msg, MuMsgIter *iter,
-			       MuConfig *opts, GError **err);
+                               MuConfig *opts, GError **err);
 
 static gboolean
 print_xapian_query (MuQuery *xapian, const gchar *query, GError **err)
 {
-	char *querystr;
+        char *querystr;
 
-	querystr = mu_query_as_string (xapian, query, err);
-	if (!querystr)
-		return FALSE;
+        querystr = mu_query_as_string (xapian, query, err);
+        if (!querystr)
+                return FALSE;
 
-	g_print ("%s\n", querystr);
-	g_free (querystr);
+        g_print ("%s\n", querystr);
+        g_free (querystr);
 
-	return TRUE;
+        return TRUE;
 }
 
 /* returns MU_MSG_FIELD_ID_NONE if there is an error */
 static MuMsgFieldId
 sort_field_from_string (const char* fieldstr, GError **err)
 {
-	MuMsgFieldId mfid;
+        MuMsgFieldId mfid;
 
-	mfid = mu_msg_field_id_from_name (fieldstr, FALSE);
+        mfid = mu_msg_field_id_from_name (fieldstr, FALSE);
 
-	/* not found? try a shortcut */
-	if (mfid == MU_MSG_FIELD_ID_NONE &&
-	    strlen(fieldstr) == 1)
-		mfid = mu_msg_field_id_from_shortcut(fieldstr[0],
-						     FALSE);
-	if (mfid == MU_MSG_FIELD_ID_NONE)
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_IN_PARAMETERS,
-			     "not a valid sort field: '%s'\n", fieldstr);
-	return mfid;
+        /* not found? try a shortcut */
+        if (mfid == MU_MSG_FIELD_ID_NONE &&
+            strlen(fieldstr) == 1)
+                mfid = mu_msg_field_id_from_shortcut(fieldstr[0],
+                                                     FALSE);
+        if (mfid == MU_MSG_FIELD_ID_NONE)
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_IN_PARAMETERS,
+                             "not a valid sort field: '%s'\n", fieldstr);
+        return mfid;
 }
 
 
 static MuMsg*
 get_message (MuMsgIter *iter, time_t after)
 {
-	MuMsg *msg;
+        MuMsg *msg;
 
-	if (mu_msg_iter_is_done (iter))
-		return NULL;
+        if (mu_msg_iter_is_done (iter))
+                return NULL;
 
-	msg = mu_msg_iter_get_msg_floating (iter);
-	if (!msg)
-		return NULL; /* error */
+        msg = mu_msg_iter_get_msg_floating (iter);
+        if (!msg)
+                return NULL; /* error */
 
-	if (!mu_msg_is_readable (msg)) {
-		mu_msg_iter_next (iter);
-		return get_message (iter, after);
-	}
+        if (!mu_msg_is_readable (msg)) {
+                mu_msg_iter_next (iter);
+                return get_message (iter, after);
+        }
 
 
-	if (after != 0 && after > mu_msg_get_timestamp (msg)) {
-		mu_msg_iter_next (iter);
-		return get_message (iter, after);
-	}
+        if (after != 0 && after > mu_msg_get_timestamp (msg)) {
+                mu_msg_iter_next (iter);
+                return get_message (iter, after);
+        }
 
-	return msg;
+        return msg;
 }
 
 static MuMsgIter*
 run_query (MuQuery *xapian, const gchar *query, MuConfig *opts,  GError **err)
 {
-	MuMsgIter *iter;
-	MuMsgFieldId sortid;
-	MuQueryFlags qflags;
+        MuMsgIter *iter;
+        MuMsgFieldId sortid;
+        MuQueryFlags qflags;
 
-	sortid = MU_MSG_FIELD_ID_NONE;
-	if (opts->sortfield) {
-		sortid = sort_field_from_string (opts->sortfield, err);
-		if (sortid == MU_MSG_FIELD_ID_NONE) /* error occured? */
-			return FALSE;
-	}
+        sortid = MU_MSG_FIELD_ID_NONE;
+        if (opts->sortfield) {
+                sortid = sort_field_from_string (opts->sortfield, err);
+                if (sortid == MU_MSG_FIELD_ID_NONE) /* error occured? */
+                        return FALSE;
+        }
 
-	qflags = MU_QUERY_FLAG_NONE;
-	if (opts->reverse)
-		qflags |= MU_QUERY_FLAG_DESCENDING;
-	if (opts->skip_dups)
-		qflags |= MU_QUERY_FLAG_SKIP_DUPS;
-	if (opts->include_related)
-		qflags |= MU_QUERY_FLAG_INCLUDE_RELATED;
-	if (opts->threads)
-		qflags |= MU_QUERY_FLAG_THREADS;
+        qflags = MU_QUERY_FLAG_NONE;
+        if (opts->reverse)
+                qflags |= MU_QUERY_FLAG_DESCENDING;
+        if (opts->skip_dups)
+                qflags |= MU_QUERY_FLAG_SKIP_DUPS;
+        if (opts->include_related)
+                qflags |= MU_QUERY_FLAG_INCLUDE_RELATED;
+        if (opts->threads)
+                qflags |= MU_QUERY_FLAG_THREADS;
 
-	iter = mu_query_run (xapian, query, sortid, opts->maxnum, qflags, err);
-	return iter;
+        iter = mu_query_run (xapian, query, sortid, opts->maxnum, qflags, err);
+        return iter;
 }
 
 
 static gboolean
 exec_cmd (MuMsg *msg, MuMsgIter *iter, MuConfig *opts,  GError **err)
 {
-	gint status;
-	char *cmdline, *escpath;
-	gboolean rv;
+        gint status;
+        char *cmdline, *escpath;
+        gboolean rv;
 
-	escpath = g_shell_quote (mu_msg_get_path (msg));
-	cmdline = g_strdup_printf ("%s %s", opts->exec, escpath);
+        escpath = g_shell_quote (mu_msg_get_path (msg));
+        cmdline = g_strdup_printf ("%s %s", opts->exec, escpath);
 
-	rv = g_spawn_command_line_sync (cmdline, NULL, NULL, &status, err);
+        rv = g_spawn_command_line_sync (cmdline, NULL, NULL, &status, err);
 
-	g_free (cmdline);
-	g_free (escpath);
+        g_free (cmdline);
+        g_free (escpath);
 
-	return rv;
+        return rv;
 }
 
 
@@ -163,190 +163,190 @@ exec_cmd (MuMsg *msg, MuMsgIter *iter, MuConfig *opts,  GError **err)
 static gchar*
 resolve_bookmark (MuConfig *opts, GError **err)
 {
-	MuBookmarks *bm;
-	char* val;
-	const gchar *bmfile;
+        MuBookmarks *bm;
+        char* val;
+        const gchar *bmfile;
 
-	bmfile = mu_runtime_path (MU_RUNTIME_PATH_BOOKMARKS);
-	bm = mu_bookmarks_new (bmfile);
-	if (!bm) {
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_FILE_CANNOT_OPEN,
-			     "failed to open bookmarks file '%s'", bmfile);
-		return FALSE;
-	}
+        bmfile = mu_runtime_path (MU_RUNTIME_PATH_BOOKMARKS);
+        bm = mu_bookmarks_new (bmfile);
+        if (!bm) {
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_FILE_CANNOT_OPEN,
+                             "failed to open bookmarks file '%s'", bmfile);
+                return FALSE;
+        }
 
-	val = (gchar*)mu_bookmarks_lookup (bm, opts->bookmark);
-	if (!val)
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_NO_MATCHES,
-			     "bookmark '%s' not found", opts->bookmark);
-	else
-		val = g_strdup (val);
+        val = (gchar*)mu_bookmarks_lookup (bm, opts->bookmark);
+        if (!val)
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_NO_MATCHES,
+                             "bookmark '%s' not found", opts->bookmark);
+        else
+                val = g_strdup (val);
 
-	mu_bookmarks_destroy (bm);
-	return val;
+        mu_bookmarks_destroy (bm);
+        return val;
 }
 
 
 static gchar*
 get_query (MuConfig *opts, GError **err)
 {
-	gchar *query, *bookmarkval;
+        gchar *query, *bookmarkval;
 
-	/* params[0] is 'find', actual search params start with [1] */
-	if (!opts->bookmark && !opts->params[1]) {
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_IN_PARAMETERS,
-			     "error in parameters");
-		return NULL;
-	}
+        /* params[0] is 'find', actual search params start with [1] */
+        if (!opts->bookmark && !opts->params[1]) {
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_IN_PARAMETERS,
+                             "error in parameters");
+                return NULL;
+        }
 
-	bookmarkval = NULL;
-	if (opts->bookmark) {
-		bookmarkval = resolve_bookmark (opts, err);
-		if (!bookmarkval)
-			return NULL;
-	}
+        bookmarkval = NULL;
+        if (opts->bookmark) {
+                bookmarkval = resolve_bookmark (opts, err);
+                if (!bookmarkval)
+                        return NULL;
+        }
 
-	query = mu_str_quoted_from_strv ((const gchar**)&opts->params[1]);
-	if (bookmarkval) {
-		gchar *tmp;
-		tmp = g_strdup_printf ("%s %s", bookmarkval, query);
-		g_free (query);
-		query = tmp;
-	}
+        query = mu_str_quoted_from_strv ((const gchar**)&opts->params[1]);
+        if (bookmarkval) {
+                gchar *tmp;
+                tmp = g_strdup_printf ("%s %s", bookmarkval, query);
+                g_free (query);
+                query = tmp;
+        }
 
-	g_free (bookmarkval);
+        g_free (bookmarkval);
 
-	return query;
+        return query;
 }
 
 
 static MuQuery*
 get_query_obj (MuStore *store, GError **err)
 {
-	MuQuery *mquery;
-	unsigned count;
+        MuQuery *mquery;
+        unsigned count;
 
-	count = mu_store_count (store, err);
+        count = mu_store_count (store, err);
 
-	if (count == (unsigned)-1)
-		return NULL;
+        if (count == (unsigned)-1)
+                return NULL;
 
-	if (count == 0) {
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_XAPIAN_IS_EMPTY,
-			     "the database is empty");
-		return NULL;
-	}
+        if (count == 0) {
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_XAPIAN_IS_EMPTY,
+                             "the database is empty");
+                return NULL;
+        }
 
-	if (!mu_store_versions_match (store)) {
-		g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_XAPIAN_VERSION_MISMATCH,
-			     "the database needs a rebuild");
-		return NULL;
-	}
+        if (!mu_store_versions_match (store)) {
+                g_set_error (err, MU_ERROR_DOMAIN, MU_ERROR_XAPIAN_VERSION_MISMATCH,
+                             "the database needs a rebuild");
+                return NULL;
+        }
 
-	mquery = mu_query_new (store, err);
-	if (!mquery)
-		return NULL;
+        mquery = mu_query_new (store, err);
+        if (!mquery)
+                return NULL;
 
-	return mquery;
+        return mquery;
 }
 
 
 static gboolean
 prepare_links (MuConfig *opts, GError **err)
 {
-	/* note, mu_maildir_mkdir simply ignores whatever part of the
-	 * mail dir already exists */
+        /* note, mu_maildir_mkdir simply ignores whatever part of the
+         * mail dir already exists */
 
-	if (!mu_maildir_mkdir (opts->linksdir, 0700, TRUE, err)) {
-		mu_util_g_set_error (err, MU_ERROR_FILE_CANNOT_MKDIR,
-				     "error creating %s", opts->linksdir);
-		return FALSE;
-	}
+        if (!mu_maildir_mkdir (opts->linksdir, 0700, TRUE, err)) {
+                mu_util_g_set_error (err, MU_ERROR_FILE_CANNOT_MKDIR,
+                                     "error creating %s", opts->linksdir);
+                return FALSE;
+        }
 
-	if (opts->clearlinks &&
-	    !mu_maildir_clear_links (opts->linksdir, err)) {
-			mu_util_g_set_error (err, MU_ERROR_FILE,
-					     "error clearing links under %s",
-					     opts->linksdir);
-			return FALSE;
-	}
+        if (opts->clearlinks &&
+            !mu_maildir_clear_links (opts->linksdir, err)) {
+                        mu_util_g_set_error (err, MU_ERROR_FILE,
+                                             "error clearing links under %s",
+                                             opts->linksdir);
+                        return FALSE;
+        }
 
-	return TRUE;
+        return TRUE;
 }
 
 
 static gboolean
 output_link (MuMsg *msg, MuMsgIter *iter, MuConfig *opts,  GError **err)
 {
-	return mu_maildir_link (mu_msg_get_path (msg),
-				opts->linksdir, err);
+        return mu_maildir_link (mu_msg_get_path (msg),
+                                opts->linksdir, err);
 }
 
 
 static void
 ansi_color_maybe (MuMsgFieldId mfid, gboolean color)
 {
-	const char* ansi;
+        const char* ansi;
 
-	if (!color)
-		return; /* nothing to do */
+        if (!color)
+                return; /* nothing to do */
 
-	switch (mfid) {
+        switch (mfid) {
 
-	case MU_MSG_FIELD_ID_FROM:
-		ansi = MU_COLOR_CYAN; break;
+        case MU_MSG_FIELD_ID_FROM:
+                ansi = MU_COLOR_CYAN; break;
 
-	case MU_MSG_FIELD_ID_TO:
-	case MU_MSG_FIELD_ID_CC:
-	case MU_MSG_FIELD_ID_BCC:
-		ansi = MU_COLOR_BLUE; break;
+        case MU_MSG_FIELD_ID_TO:
+        case MU_MSG_FIELD_ID_CC:
+        case MU_MSG_FIELD_ID_BCC:
+                ansi = MU_COLOR_BLUE; break;
 
-	case MU_MSG_FIELD_ID_SUBJECT:
-		ansi = MU_COLOR_GREEN; break;
+        case MU_MSG_FIELD_ID_SUBJECT:
+                ansi = MU_COLOR_GREEN; break;
 
-	case MU_MSG_FIELD_ID_DATE:
-		ansi = MU_COLOR_MAGENTA; break;
+        case MU_MSG_FIELD_ID_DATE:
+                ansi = MU_COLOR_MAGENTA; break;
 
-	default:
-		if (mu_msg_field_type(mfid) == MU_MSG_FIELD_TYPE_STRING)
-			ansi = MU_COLOR_YELLOW;
-		else
-			ansi = MU_COLOR_RED;
-	}
+        default:
+                if (mu_msg_field_type(mfid) == MU_MSG_FIELD_TYPE_STRING)
+                        ansi = MU_COLOR_YELLOW;
+                else
+                        ansi = MU_COLOR_RED;
+        }
 
-	fputs (ansi, stdout);
+        fputs (ansi, stdout);
 }
 
 
 static void
 ansi_reset_maybe (MuMsgFieldId mfid, gboolean color)
 {
-	if (!color)
-		return; /* nothing to do */
+        if (!color)
+                return; /* nothing to do */
 
-	fputs (MU_COLOR_DEFAULT, stdout);
+        fputs (MU_COLOR_DEFAULT, stdout);
 
 }
 
 static const char*
 field_string_list (MuMsg *msg, MuMsgFieldId mfid)
 {
-	char *str;
-	const GSList *lst;
-	static char buf[80];
+        char *str;
+        const GSList *lst;
+        static char buf[80];
 
-	lst = mu_msg_get_field_string_list (msg, mfid);
-	if (!lst)
-		return NULL;
+        lst = mu_msg_get_field_string_list (msg, mfid);
+        if (!lst)
+                return NULL;
 
-	str = mu_str_from_list (lst, ',');
-	if (str) {
-		strncpy (buf, str, sizeof(buf));
-		g_free (str);
-		return buf;
-	}
+        str = mu_str_from_list (lst, ',');
+        if (str) {
+                strncpy (buf, str, sizeof(buf));
+                g_free (str);
+                return buf;
+        }
 
-	return NULL;
+        return NULL;
 }
 
 
@@ -354,152 +354,152 @@ field_string_list (MuMsg *msg, MuMsgFieldId mfid)
 static const char*
 display_field (MuMsg *msg, MuMsgFieldId mfid)
 {
-	gint64 val;
+        gint64 val;
 
-	switch (mu_msg_field_type(mfid)) {
-	case MU_MSG_FIELD_TYPE_STRING: {
-		const gchar *str;
-		str = mu_msg_get_field_string (msg, mfid);
-		return str ? str : "";
-	}
-	case MU_MSG_FIELD_TYPE_INT:
+        switch (mu_msg_field_type(mfid)) {
+        case MU_MSG_FIELD_TYPE_STRING: {
+                const gchar *str;
+                str = mu_msg_get_field_string (msg, mfid);
+                return str ? str : "";
+        }
+        case MU_MSG_FIELD_TYPE_INT:
 
-		if (mfid == MU_MSG_FIELD_ID_PRIO) {
-			val = mu_msg_get_field_numeric (msg, mfid);
-			return mu_msg_prio_name ((MuMsgPrio)val);
- 		} else if (mfid == MU_MSG_FIELD_ID_FLAGS) {
-			val = mu_msg_get_field_numeric (msg, mfid);
-			return mu_str_flags_s ((MuFlags)val);
-		} else  /* as string */
-			return mu_msg_get_field_string (msg, mfid);
+                if (mfid == MU_MSG_FIELD_ID_PRIO) {
+                        val = mu_msg_get_field_numeric (msg, mfid);
+                        return mu_msg_prio_name ((MuMsgPrio)val);
+                } else if (mfid == MU_MSG_FIELD_ID_FLAGS) {
+                        val = mu_msg_get_field_numeric (msg, mfid);
+                        return mu_str_flags_s ((MuFlags)val);
+                } else  /* as string */
+                        return mu_msg_get_field_string (msg, mfid);
 
-	case MU_MSG_FIELD_TYPE_TIME_T:
-		val = mu_msg_get_field_numeric (msg, mfid);
-		return mu_date_str_s ("%c", (time_t)val);
+        case MU_MSG_FIELD_TYPE_TIME_T:
+                val = mu_msg_get_field_numeric (msg, mfid);
+                return mu_date_str_s ("%c", (time_t)val);
 
-	case MU_MSG_FIELD_TYPE_BYTESIZE:
-		val = mu_msg_get_field_numeric (msg, mfid);
-		return mu_str_size_s ((unsigned)val);
-	case MU_MSG_FIELD_TYPE_STRING_LIST: {
-		const char *str;
-		str = field_string_list (msg, mfid);
-		return str ? str : "";
-	}
-	default:
-		g_return_val_if_reached (NULL);
-	}
+        case MU_MSG_FIELD_TYPE_BYTESIZE:
+                val = mu_msg_get_field_numeric (msg, mfid);
+                return mu_str_size_s ((unsigned)val);
+        case MU_MSG_FIELD_TYPE_STRING_LIST: {
+                const char *str;
+                str = field_string_list (msg, mfid);
+                return str ? str : "";
+        }
+        default:
+                g_return_val_if_reached (NULL);
+        }
 }
 
 
 static void
 print_summary (MuMsg *msg, MuConfig *opts)
 {
-	const char* body;
-	char *summ;
-	MuMsgOptions msgopts;
+        const char* body;
+        char *summ;
+        MuMsgOptions msgopts;
 
-	msgopts = mu_config_get_msg_options (opts);
-	body = mu_msg_get_body_text(msg, msgopts);
+        msgopts = mu_config_get_msg_options (opts);
+        body = mu_msg_get_body_text(msg, msgopts);
 
-	if (body)
-		summ = mu_str_summarize (body, (unsigned)opts->summary_len);
-	else
-		summ = NULL;
+        if (body)
+                summ = mu_str_summarize (body, (unsigned)opts->summary_len);
+        else
+                summ = NULL;
 
-	g_print ("Summary: ");
-	mu_util_fputs_encoded (summ ? summ : "<none>", stdout);
-	g_print ("\n");
+        g_print ("Summary: ");
+        mu_util_fputs_encoded (summ ? summ : "<none>", stdout);
+        g_print ("\n");
 
-	g_free (summ);
+        g_free (summ);
 }
 
 
 static void
 thread_indent (MuMsgIter *iter)
 {
-	const MuMsgIterThreadInfo *ti;
-	const char* threadpath;
-	int i;
-	gboolean is_root, first_child, empty_parent, is_dup;
+        const MuMsgIterThreadInfo *ti;
+        const char* threadpath;
+        int i;
+        gboolean is_root, first_child, empty_parent, is_dup;
 
-	ti = mu_msg_iter_get_thread_info (iter);
-	if (!ti) {
-		g_warning ("cannot get thread-info for message %u",
-			   mu_msg_iter_get_docid (iter));
-		return;
-	}
+        ti = mu_msg_iter_get_thread_info (iter);
+        if (!ti) {
+                g_warning ("cannot get thread-info for message %u",
+                           mu_msg_iter_get_docid (iter));
+                return;
+        }
 
-	threadpath = ti->threadpath;
-	/* fputs (threadpath, stdout); */
-	/* fputs ("  ", stdout); */
+        threadpath = ti->threadpath;
+        /* fputs (threadpath, stdout); */
+        /* fputs ("  ", stdout); */
 
-	is_root      = ti->prop & MU_MSG_ITER_THREAD_PROP_ROOT;
-	first_child  = ti->prop & MU_MSG_ITER_THREAD_PROP_FIRST_CHILD;
-	empty_parent = ti->prop & MU_MSG_ITER_THREAD_PROP_EMPTY_PARENT;
-	is_dup       = ti->prop & MU_MSG_ITER_THREAD_PROP_DUP;
+        is_root      = ti->prop & MU_MSG_ITER_THREAD_PROP_ROOT;
+        first_child  = ti->prop & MU_MSG_ITER_THREAD_PROP_FIRST_CHILD;
+        empty_parent = ti->prop & MU_MSG_ITER_THREAD_PROP_EMPTY_PARENT;
+        is_dup       = ti->prop & MU_MSG_ITER_THREAD_PROP_DUP;
 
-	/* FIXME: count the colons... */
-	for (i = 0; *threadpath; ++threadpath)
-		i += (*threadpath == ':') ? 1 : 0;
+        /* FIXME: count the colons... */
+        for (i = 0; *threadpath; ++threadpath)
+                i += (*threadpath == ':') ? 1 : 0;
 
-	/* indent */
-	while (i --> 0)
-		fputs ("  ", stdout);
+        /* indent */
+        while (i --> 0)
+                fputs ("  ", stdout);
 
-	if (!is_root) {
-		fputs (first_child ? "`" : "|", stdout);
-		fputs (empty_parent ? "*> " : is_dup ? "=> " : "-> ", stdout);
-	}
+        if (!is_root) {
+                fputs (first_child ? "`" : "|", stdout);
+                fputs (empty_parent ? "*> " : is_dup ? "=> " : "-> ", stdout);
+        }
 }
 
 
 
 static void
 output_plain_fields (MuMsg *msg, const char *fields,
-		     gboolean color, gboolean threads)
+                     gboolean color, gboolean threads)
 {
-	const char*	myfields;
-	int		nonempty;
+        const char*     myfields;
+        int             nonempty;
 
-	g_return_if_fail (fields);
+        g_return_if_fail (fields);
 
-	for (myfields = fields, nonempty = 0; *myfields; ++myfields) {
+        for (myfields = fields, nonempty = 0; *myfields; ++myfields) {
 
-		MuMsgFieldId mfid;
-		mfid =	mu_msg_field_id_from_shortcut (*myfields, FALSE);
+                MuMsgFieldId mfid;
+                mfid =  mu_msg_field_id_from_shortcut (*myfields, FALSE);
 
-		if (mfid == MU_MSG_FIELD_ID_NONE ||
-		    (!mu_msg_field_xapian_value (mfid) &&
-		     !mu_msg_field_xapian_contact (mfid)))
-		  nonempty += printf ("%c", *myfields);
+                if (mfid == MU_MSG_FIELD_ID_NONE ||
+                    (!mu_msg_field_xapian_value (mfid) &&
+                     !mu_msg_field_xapian_contact (mfid)))
+                  nonempty += printf ("%c", *myfields);
 
-		else {
-			ansi_color_maybe (mfid, color);
-			nonempty += mu_util_fputs_encoded
-			  (display_field (msg, mfid), stdout);
-			ansi_reset_maybe (mfid, color);
-		}
-	}
+                else {
+                        ansi_color_maybe (mfid, color);
+                        nonempty += mu_util_fputs_encoded
+                          (display_field (msg, mfid), stdout);
+                        ansi_reset_maybe (mfid, color);
+                }
+        }
 
-	if (nonempty)
-		fputs ("\n", stdout);
+        if (nonempty)
+                fputs ("\n", stdout);
 }
 
 static gboolean
 output_plain (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 {
-	/* we reuse the color (whatever that may be)
-	 * for message-priority for threads, too */
-	ansi_color_maybe (MU_MSG_FIELD_ID_PRIO, !opts->nocolor);
-	if (opts->threads)
-		thread_indent (iter);
+        /* we reuse the color (whatever that may be)
+         * for message-priority for threads, too */
+        ansi_color_maybe (MU_MSG_FIELD_ID_PRIO, !opts->nocolor);
+        if (opts->threads)
+                thread_indent (iter);
 
-	output_plain_fields (msg, opts->fields, !opts->nocolor, opts->threads);
+        output_plain_fields (msg, opts->fields, !opts->nocolor, opts->threads);
 
-	if (opts->summary_len > 0)
-		print_summary (msg, opts);
+        if (opts->summary_len > 0)
+                print_summary (msg, opts);
 
-	return TRUE;
+        return TRUE;
 }
 
 
@@ -507,50 +507,50 @@ output_plain (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 static gboolean
 output_sexp (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 {
-	char *sexp;
-	const MuMsgIterThreadInfo *ti;
+        char *sexp;
+        const MuMsgIterThreadInfo *ti;
 
-	ti   = opts->threads ? mu_msg_iter_get_thread_info (iter) : NULL;
-	sexp = mu_msg_to_sexp (msg, mu_msg_iter_get_docid (iter),
-			       ti, MU_MSG_OPTION_HEADERS_ONLY);
-	fputs (sexp, stdout);
-	g_free (sexp);
+        ti   = opts->threads ? mu_msg_iter_get_thread_info (iter) : NULL;
+        sexp = mu_msg_to_sexp (msg, mu_msg_iter_get_docid (iter),
+                               ti, MU_MSG_OPTION_HEADERS_ONLY);
+        fputs (sexp, stdout);
+        g_free (sexp);
 
-	return TRUE;
+        return TRUE;
 }
 
 static void
 print_attr_xml (const char* elm, const char *str)
 {
-	gchar *esc;
+        gchar *esc;
 
-	if (mu_str_is_empty(str))
-		return; /* empty: don't include */
+        if (mu_str_is_empty(str))
+                return; /* empty: don't include */
 
-	esc = g_markup_escape_text (str, -1);
-	g_print ("\t\t<%s>%s</%s>\n", elm, esc, elm);
-	g_free (esc);
+        esc = g_markup_escape_text (str, -1);
+        g_print ("\t\t<%s>%s</%s>\n", elm, esc, elm);
+        g_free (esc);
 }
 
 
 static gboolean
 output_xml (MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err)
 {
-	g_print ("\t<message>\n");
-	print_attr_xml ("from", mu_msg_get_from (msg));
-	print_attr_xml ("to", mu_msg_get_to (msg));
-	print_attr_xml ("cc", mu_msg_get_cc (msg));
-	print_attr_xml ("subject", mu_msg_get_subject (msg));
-	g_print ("\t\t<date>%u</date>\n", (unsigned)mu_msg_get_date (msg));
-	g_print ("\t\t<size>%u</size>\n", (unsigned)mu_msg_get_size (msg));
-	print_attr_xml ("msgid", mu_msg_get_msgid (msg));
-	print_attr_xml ("path", mu_msg_get_path (msg));
-	print_attr_xml ("maildir", mu_msg_get_maildir (msg));
-	print_attr_xml ("flags", mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
+        g_print ("\t<message>\n");
+        print_attr_xml ("from", mu_msg_get_from (msg));
+        print_attr_xml ("to", mu_msg_get_to (msg));
+        print_attr_xml ("cc", mu_msg_get_cc (msg));
+        print_attr_xml ("subject", mu_msg_get_subject (msg));
+        g_print ("\t\t<date>%u</date>\n", (unsigned)mu_msg_get_date (msg));
+        g_print ("\t\t<size>%u</size>\n", (unsigned)mu_msg_get_size (msg));
+        print_attr_xml ("msgid", mu_msg_get_msgid (msg));
+        print_attr_xml ("path", mu_msg_get_path (msg));
+        print_attr_xml ("maildir", mu_msg_get_maildir (msg));
+        print_attr_xml ("flags", mu_flags_to_str_s (mu_msg_get_flags (msg), (MuFlagType)MU_FLAG_TYPE_ANY));
 
-	g_print ("\t</message>\n");
+        g_print ("\t</message>\n");
 
-	return TRUE;
+        return TRUE;
 }
 
 
@@ -562,7 +562,7 @@ json_add_address_list (JsonBuilder *builder, InternetAddressList* list);
 static void
 json_add_address (JsonBuilder *builder, InternetAddress *ia)
 {
-	if (INTERNET_ADDRESS_IS_GROUP(ia)) {
+        if (INTERNET_ADDRESS_IS_GROUP(ia)) {
     InternetAddressGroup *group;
     InternetAddressList *group_list;
 
@@ -570,31 +570,31 @@ json_add_address (JsonBuilder *builder, InternetAddress *ia)
     group_list = internet_address_group_get_members(group);
 
     json_add_address_list(builder, group_list);
-	} else if (INTERNET_ADDRESS_IS_MAILBOX(ia)) {
+        } else if (INTERNET_ADDRESS_IS_MAILBOX(ia)) {
     InternetAddressMailbox *mailbox;
     const char *addr_name;
     const char *addr_address;
 
     mailbox = INTERNET_ADDRESS_MAILBOX(ia);
     addr_name = internet_address_get_name(ia);
-  	addr_address = internet_address_mailbox_get_addr(mailbox);
+        addr_address = internet_address_mailbox_get_addr(mailbox);
 
-  	if (!addr_name && !addr_address)
-  		return;
+        if (!addr_name && !addr_address)
+                return;
 
-  	json_builder_begin_object (builder);
+        json_builder_begin_object (builder);
 
     if (addr_name) {
-  		json_builder_set_member_name (builder, "name");
-  		json_builder_add_string_value (builder, addr_name);
-  	}
+                json_builder_set_member_name (builder, "name");
+                json_builder_add_string_value (builder, addr_name);
+        }
 
-  	if (addr_address) {
-  		json_builder_set_member_name (builder, "address");
-  		json_builder_add_string_value (builder, addr_address);
-  	}
+        if (addr_address) {
+                json_builder_set_member_name (builder, "address");
+                json_builder_add_string_value (builder, addr_address);
+        }
 
-  	json_builder_end_object (builder);
+        json_builder_end_object (builder);
   }
 }
 
@@ -602,13 +602,13 @@ json_add_address (JsonBuilder *builder, InternetAddress *ia)
 static void
 json_add_address_list (JsonBuilder *builder, InternetAddressList* list)
 {
-	int size;
-	int i;
+        int size;
+        int i;
 
   if (list) {
     size = internet_address_list_length(list);
-  	for (i = 0; i < size; i++)
-    	json_add_address(builder, internet_address_list_get_address(list, i));
+        for (i = 0; i < size; i++)
+        json_add_address(builder, internet_address_list_get_address(list, i));
   }
 }
 
@@ -616,37 +616,37 @@ json_add_address_list (JsonBuilder *builder, InternetAddressList* list)
 static void
 json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 {
-	InternetAddressList *addr_from;
-	InternetAddressList *addr_to;
-	InternetAddressList *addr_cc;
+        InternetAddressList *addr_from;
+        InternetAddressList *addr_to;
+        InternetAddressList *addr_cc;
 
-	addr_from = internet_address_list_parse_string( mu_msg_get_from (msg) );
-	if (addr_from) {
-  	json_builder_set_member_name (builder, "from");
-		json_builder_begin_array (builder);
-		json_add_address_list(builder, addr_from);
-  	json_builder_end_array (builder);
-  	g_object_unref(addr_from);
+        addr_from = internet_address_list_parse_string( mu_msg_get_from (msg) );
+        if (addr_from) {
+        json_builder_set_member_name (builder, "from");
+                json_builder_begin_array (builder);
+                json_add_address_list(builder, addr_from);
+        json_builder_end_array (builder);
+        g_object_unref(addr_from);
   }
 
 
-	addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
-	if (addr_to) {
-	  json_builder_set_member_name (builder, "to");
-		json_builder_begin_array (builder);
-		json_add_address_list(builder, addr_to);
-	  json_builder_end_array (builder);
-	  g_object_unref(addr_to);
-	}
+        addr_to = internet_address_list_parse_string( mu_msg_get_to (msg) );
+        if (addr_to) {
+          json_builder_set_member_name (builder, "to");
+                json_builder_begin_array (builder);
+                json_add_address_list(builder, addr_to);
+          json_builder_end_array (builder);
+          g_object_unref(addr_to);
+        }
 
-	addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
-	if (addr_cc) {
-	  json_builder_set_member_name (builder, "cc");
-		json_builder_begin_array (builder);
-		json_add_address_list(builder, addr_cc);
-	  json_builder_end_array (builder);
-	  g_object_unref(addr_cc);
-	}
+        addr_cc = internet_address_list_parse_string( mu_msg_get_cc (msg) );
+        if (addr_cc) {
+          json_builder_set_member_name (builder, "cc");
+                json_builder_begin_array (builder);
+                json_add_address_list(builder, addr_cc);
+          json_builder_end_array (builder);
+          g_object_unref(addr_cc);
+        }
 
 }
 
@@ -654,11 +654,11 @@ json_add_recipients(JsonBuilder *builder, MuMsg *msg)
 static void
 json_add_subject(JsonBuilder *builder, MuMsg *msg)
 {
-	const char *subject;
-	subject = mu_msg_get_subject (msg);
-	if (subject) {
-  	json_builder_set_member_name (builder, "subject");
-  	json_builder_add_string_value (builder, subject);
+        const char *subject;
+        subject = mu_msg_get_subject (msg);
+        if (subject) {
+        json_builder_set_member_name (builder, "subject");
+        json_builder_add_string_value (builder, subject);
   }
 }
 
@@ -666,17 +666,17 @@ json_add_subject(JsonBuilder *builder, MuMsg *msg)
 static void
 json_add_flags(JsonBuilder *builder, MuMsg *msg)
 {
-	MuFlags flags;
-	const char *flags_str;
+        MuFlags flags;
+        const char *flags_str;
 
-	flags = mu_msg_get_flags (msg);
+        flags = mu_msg_get_flags (msg);
 
-	if (flags) {
-		flags_str = mu_flags_to_str_s (flags, (MuFlagType)MU_FLAG_TYPE_ANY);
-		if (flags_str) {
-	  	json_builder_set_member_name (builder, "flags");
-  		json_builder_add_string_value (builder, flags_str);
-  	}
+        if (flags) {
+                flags_str = mu_flags_to_str_s (flags, (MuFlagType)MU_FLAG_TYPE_ANY);
+                if (flags_str) {
+                json_builder_set_member_name (builder, "flags");
+                json_builder_add_string_value (builder, flags_str);
+        }
   }
 }
 
@@ -684,17 +684,17 @@ json_add_flags(JsonBuilder *builder, MuMsg *msg)
 static JsonBuilder*
 get_message_json (MuMsg *msg)
 {
-	JsonBuilder *builder = json_builder_new ();
+        JsonBuilder *builder = json_builder_new ();
   json_builder_begin_object (builder);
 
   json_add_recipients(builder, msg);
   json_add_subject(builder, msg);
 
-	json_builder_set_member_name (builder, "msgid");
-	json_builder_add_string_value (builder, mu_msg_get_msgid (msg));
+        json_builder_set_member_name (builder, "msgid");
+        json_builder_add_string_value (builder, mu_msg_get_msgid (msg));
 
-	json_builder_set_member_name (builder, "date");
- 	json_builder_add_int_value (builder, (unsigned)mu_msg_get_date (msg));
+        json_builder_set_member_name (builder, "date");
+        json_builder_add_int_value (builder, (unsigned)mu_msg_get_date (msg));
 
   json_add_flags(builder, msg);
 
@@ -714,19 +714,19 @@ get_message_json (MuMsg *msg)
 
 static gboolean
 output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
-	JsonBuilder *builder;
+        JsonBuilder *builder;
   JsonNode *root;
   JsonGenerator *gen;
-  char *json_str;
+  gchar *json_str;
 
-	builder = get_message_json (msg);
+        builder = get_message_json (msg);
   gen = json_generator_new ();
   root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
 
   json_str = json_generator_to_data (gen, NULL);
-	g_print ("%s, ", json_str);
-	g_free(json_str);
+        g_print ("%s, ", json_str);
+        g_free(json_str);
 
   json_node_free (root);
   g_object_unref (gen);
@@ -738,219 +738,219 @@ output_json(MuMsg *msg, MuMsgIter *iter, MuConfig *opts, GError **err) {
 static OutputFunc*
 output_prepare (MuConfig *opts, GError **err)
 {
-	switch (opts->format) {
-	case MU_CONFIG_FORMAT_EXEC:
-		return exec_cmd;
-	case MU_CONFIG_FORMAT_LINKS:
-		if (!prepare_links (opts, err))
-			return NULL;
-		else
-			return output_link;
-	case MU_CONFIG_FORMAT_PLAIN:
-		return output_plain;
-	case MU_CONFIG_FORMAT_JSON:
-		g_print ("[ ");
-		return output_json;
-	case MU_CONFIG_FORMAT_XML:
-		g_print ("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
-		g_print ("<messages>\n");
-		return output_xml;
-	case MU_CONFIG_FORMAT_SEXP:
-		return output_sexp;
+        switch (opts->format) {
+        case MU_CONFIG_FORMAT_EXEC:
+                return exec_cmd;
+        case MU_CONFIG_FORMAT_LINKS:
+                if (!prepare_links (opts, err))
+                        return NULL;
+                else
+                        return output_link;
+        case MU_CONFIG_FORMAT_PLAIN:
+                return output_plain;
+        case MU_CONFIG_FORMAT_JSON:
+                g_print ("[ ");
+                return output_json;
+        case MU_CONFIG_FORMAT_XML:
+                g_print ("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
+                g_print ("<messages>\n");
+                return output_xml;
+        case MU_CONFIG_FORMAT_SEXP:
+                return output_sexp;
 
-	default:
-		g_return_val_if_reached (NULL);
-		return NULL;
-	}
+        default:
+                g_return_val_if_reached (NULL);
+                return NULL;
+        }
 }
 
 static void
 output_finish (MuConfig *opts)
 {
-	switch (opts->format) {
-		case MU_CONFIG_FORMAT_XML:
-			g_print ("</messages>\n");
-			return;
-		case MU_CONFIG_FORMAT_JSON:
-			g_print ("null ]\n");
-			return;
-		default:
-			return;
-	}
+        switch (opts->format) {
+                case MU_CONFIG_FORMAT_XML:
+                        g_print ("</messages>\n");
+                        return;
+                case MU_CONFIG_FORMAT_JSON:
+                        g_print ("null ]\n");
+                        return;
+                default:
+                        return;
+        }
 }
 
 
 static gboolean
 output_query_results (MuMsgIter *iter, MuConfig *opts, GError **err)
 {
-	int		 count;
-	gboolean	 rv;
-	OutputFunc	*output_func;
+        int              count;
+        gboolean         rv;
+        OutputFunc      *output_func;
 
-	output_func = output_prepare (opts, err);
-	if (!output_func)
-		return FALSE;
+        output_func = output_prepare (opts, err);
+        if (!output_func)
+                return FALSE;
 
-	for (count = 0, rv = TRUE; !mu_msg_iter_is_done(iter);
-	     mu_msg_iter_next (iter)) {
+        for (count = 0, rv = TRUE; !mu_msg_iter_is_done(iter);
+             mu_msg_iter_next (iter)) {
 
-		MuMsg *msg;
+                MuMsg *msg;
 
-		if (count == opts->maxnum)
-			break;
-		msg = get_message (iter, opts->after);
-		if (!msg)
-			break;
+                if (count == opts->maxnum)
+                        break;
+                msg = get_message (iter, opts->after);
+                if (!msg)
+                        break;
 
-		/* { */
-		/* 	const char* thread_id; */
-		/* 	thread_id = mu_msg_iter_get_thread_id (iter); */
-		/* 	g_print ("%s ", thread_id ? thread_id : "<none>"); */
+                /* { */
+                /*      const char* thread_id; */
+                /*      thread_id = mu_msg_iter_get_thread_id (iter); */
+                /*      g_print ("%s ", thread_id ? thread_id : "<none>"); */
 
-		/* } */
-		rv = output_func (msg, iter, opts, err);
-		if (!rv)
-			break;
-		else
-			++count;
-	}
+                /* } */
+                rv = output_func (msg, iter, opts, err);
+                if (!rv)
+                        break;
+                else
+                        ++count;
+        }
 
-	output_finish (opts);
+        output_finish (opts);
 
-	if (rv && count == 0) {
-		mu_util_g_set_error (err, MU_ERROR_NO_MATCHES,
-				     "no matches for search expression");
-		return FALSE;
-	}
+        if (rv && count == 0) {
+                mu_util_g_set_error (err, MU_ERROR_NO_MATCHES,
+                                     "no matches for search expression");
+                return FALSE;
+        }
 
-	return rv;
+        return rv;
 }
 
 
 static gboolean
 process_query (MuQuery *xapian, const gchar *query, MuConfig *opts, GError **err)
 {
-	MuMsgIter *iter;
-	gboolean rv;
+        MuMsgIter *iter;
+        gboolean rv;
 
-	iter = run_query (xapian, query, opts, err);
-	if (!iter)
-		return FALSE;
+        iter = run_query (xapian, query, opts, err);
+        if (!iter)
+                return FALSE;
 
-	rv = output_query_results (iter, opts, err);
-	mu_msg_iter_destroy (iter);
+        rv = output_query_results (iter, opts, err);
+        mu_msg_iter_destroy (iter);
 
-	return rv;
+        return rv;
 }
 
 
 static gboolean
 execute_find (MuStore *store, MuConfig *opts, GError **err)
 {
-	char *query_str;
-	MuQuery *oracle;
-	gboolean rv;
+        char *query_str;
+        MuQuery *oracle;
+        gboolean rv;
 
-	oracle = get_query_obj(store, err);
-	if (!oracle)
-		return FALSE;
+        oracle = get_query_obj(store, err);
+        if (!oracle)
+                return FALSE;
 
-	query_str = get_query (opts, err);
-	if (!query_str) {
-		mu_query_destroy (oracle);
-		return FALSE;
-	}
+        query_str = get_query (opts, err);
+        if (!query_str) {
+                mu_query_destroy (oracle);
+                return FALSE;
+        }
 
-	if (opts->format == MU_CONFIG_FORMAT_XQUERY)
-		rv = print_xapian_query (oracle, query_str, err);
-	else
-		rv = process_query (oracle, query_str, opts, err);
+        if (opts->format == MU_CONFIG_FORMAT_XQUERY)
+                rv = print_xapian_query (oracle, query_str, err);
+        else
+                rv = process_query (oracle, query_str, opts, err);
 
-	mu_query_destroy (oracle);
-	g_free (query_str);
+        mu_query_destroy (oracle);
+        g_free (query_str);
 
-	return rv;
+        return rv;
 }
 
 
 static gboolean
 format_params_valid (MuConfig *opts, GError **err)
 {
-	switch (opts->format) {
-	case MU_CONFIG_FORMAT_EXEC:
-		break;
-	case MU_CONFIG_FORMAT_PLAIN:
-	case MU_CONFIG_FORMAT_SEXP:
-	case MU_CONFIG_FORMAT_LINKS:
-	case MU_CONFIG_FORMAT_XML:
-	case MU_CONFIG_FORMAT_JSON:
-	case MU_CONFIG_FORMAT_XQUERY:
-		if (opts->exec) {
-			mu_util_g_set_error
-				(err, MU_ERROR_IN_PARAMETERS,
-				 "--exec and --format cannot be combined");
-			return FALSE;
-		}
-		break;
-	default:  mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
-				       "invalid output format %s",
-			 opts->formatstr ? opts->formatstr : "<none>");
-		return FALSE;
-	}
+        switch (opts->format) {
+        case MU_CONFIG_FORMAT_EXEC:
+                break;
+        case MU_CONFIG_FORMAT_PLAIN:
+        case MU_CONFIG_FORMAT_SEXP:
+        case MU_CONFIG_FORMAT_LINKS:
+        case MU_CONFIG_FORMAT_XML:
+        case MU_CONFIG_FORMAT_JSON:
+        case MU_CONFIG_FORMAT_XQUERY:
+                if (opts->exec) {
+                        mu_util_g_set_error
+                                (err, MU_ERROR_IN_PARAMETERS,
+                                 "--exec and --format cannot be combined");
+                        return FALSE;
+                }
+                break;
+        default:  mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
+                                       "invalid output format %s",
+                         opts->formatstr ? opts->formatstr : "<none>");
+                return FALSE;
+        }
 
-	if (opts->format == MU_CONFIG_FORMAT_LINKS && !opts->linksdir) {
-		mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
-				     "missing --linksdir argument");
-		return FALSE;
-	}
+        if (opts->format == MU_CONFIG_FORMAT_LINKS && !opts->linksdir) {
+                mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
+                                     "missing --linksdir argument");
+                return FALSE;
+        }
 
-	if (opts->linksdir && opts->format != MU_CONFIG_FORMAT_LINKS) {
-		mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
-			 "--linksdir is only valid with --format=links");
-		return FALSE;
-	}
+        if (opts->linksdir && opts->format != MU_CONFIG_FORMAT_LINKS) {
+                mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
+                         "--linksdir is only valid with --format=links");
+                return FALSE;
+        }
 
-	return TRUE;
+        return TRUE;
 }
 
 static gboolean
 query_params_valid (MuConfig *opts, GError **err)
 {
-	const gchar *xpath;
+        const gchar *xpath;
 
-	if (!opts->params[1]) {
-		mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
-				     "missing query");
-		return FALSE;
-	}
+        if (!opts->params[1]) {
+                mu_util_g_set_error (err, MU_ERROR_IN_PARAMETERS,
+                                     "missing query");
+                return FALSE;
+        }
 
-	xpath = mu_runtime_path (MU_RUNTIME_PATH_XAPIANDB);
-	if (mu_util_check_dir (xpath, TRUE, FALSE))
-		return TRUE;
+        xpath = mu_runtime_path (MU_RUNTIME_PATH_XAPIANDB);
+        if (mu_util_check_dir (xpath, TRUE, FALSE))
+                return TRUE;
 
-	mu_util_g_set_error (err, MU_ERROR_FILE_CANNOT_READ,
-			     "'%s' is not a readable Xapian directory",
-			     xpath);
-	return FALSE;
+        mu_util_g_set_error (err, MU_ERROR_FILE_CANNOT_READ,
+                             "'%s' is not a readable Xapian directory",
+                             xpath);
+        return FALSE;
 }
 
 
 MuError
 mu_cmd_find (MuStore *store, MuConfig *opts, GError **err)
 {
-	g_return_val_if_fail (opts, MU_ERROR_INTERNAL);
-	g_return_val_if_fail (opts->cmd == MU_CONFIG_CMD_FIND,
-			      MU_ERROR_INTERNAL);
+        g_return_val_if_fail (opts, MU_ERROR_INTERNAL);
+        g_return_val_if_fail (opts->cmd == MU_CONFIG_CMD_FIND,
+                              MU_ERROR_INTERNAL);
 
-	if (opts->exec)
-		opts->format = MU_CONFIG_FORMAT_EXEC; /* pseudo format */
+        if (opts->exec)
+                opts->format = MU_CONFIG_FORMAT_EXEC; /* pseudo format */
 
-	if (!query_params_valid (opts, err) ||
-	    !format_params_valid(opts, err))
-		return MU_G_ERROR_CODE (err);
+        if (!query_params_valid (opts, err) ||
+            !format_params_valid(opts, err))
+                return MU_G_ERROR_CODE (err);
 
-	if (!execute_find (store, opts, err))
-		return MU_G_ERROR_CODE(err);
-	else
-		return MU_OK;
+        if (!execute_find (store, opts, err))
+                return MU_G_ERROR_CODE(err);
+        else
+                return MU_OK;
 }

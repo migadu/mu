@@ -274,8 +274,9 @@ static void
 each_contact_json (const char *email, const char *name)
 {
 
-  JsonBuilder *builder = json_builder_new ();
+  JsonBuilder *builder;
 
+  builder = json_builder_new ();
   json_builder_begin_object (builder);
   json_builder_set_member_name (builder, "name");
   json_builder_add_string_value (builder, name);
@@ -284,10 +285,14 @@ each_contact_json (const char *email, const char *name)
   json_builder_end_object (builder);
 
 
-  JsonGenerator *gen = json_generator_new ();
-  JsonNode * root = json_builder_get_root (builder);
+  JsonGenerator *gen;
+  JsonNode *root;
+  gchar *json;
+
+  gen = json_generator_new ();
+  root = json_builder_get_root (builder);
   json_generator_set_root (gen, root);
-  gchar *json = json_generator_to_data (gen, NULL);
+  json = json_generator_to_data (gen, NULL);
   g_print("%s, ", json);
   g_free(json);
 
@@ -385,10 +390,6 @@ run_cmd_cfind (const char* pattern,
         MuContacts *contacts;
         size_t num;
         ECData ecdata;
-        JsonBuilder *builder;
-        JsonNode *root;
-        JsonGenerator *gen;
-        char *json_str;
 
         ecdata.personal = personal;
         ecdata.after    = after;
