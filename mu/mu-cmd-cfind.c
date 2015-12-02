@@ -33,6 +33,9 @@
 #include "mu-contacts.h"
 #include "mu-runtime.h"
 
+#include <gmime/gmime.h>
+#include <json-glib/json-glib.h>
+
 /**
  * guess the last name for the given name; clearly,
  * this is just a rough guess for setting an initial value.
