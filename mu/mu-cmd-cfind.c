@@ -273,11 +273,27 @@ print_csv_field (const char *str)
 static void
 each_contact_json (const char *email, const char *name)
 {
-        mu_util_print_encoded ("{\"name\":\"");
-        print_csv_field (name);
-        mu_util_print_encoded ("\", \"address\":\"");
-        print_csv_field (email);
-        mu_util_print_encoded ("\"},");
+
+  JsonBuilder *builder = json_builder_new ();
+
+  json_builder_begin_object (builder);
+  json_builder_set_member_name (builder, "name");
+  json_builder_add_string_value (builder, name);
+  json_builder_set_member_name (builder, "address");
+  json_builder_add_string_value (builder, email);
+  json_builder_end_object (builder);
+
+
+  JsonGenerator *gen = json_generator_new ();
+  JsonNode * root = json_builder_get_root (builder);
+  json_generator_set_root (gen, root);
+  gchar *json = json_generator_to_data (gen, NULL);
+  g_print("%s, ", json);
+  g_free(json);
+
+  json_node_free(root);
+  g_object_unref(gen);
+  g_object_unref(builder);
 }
 
 static void
@@ -369,6 +385,10 @@ run_cmd_cfind (const char* pattern,
         MuContacts *contacts;
         size_t num;
         ECData ecdata;
+        JsonBuilder *builder;
+        JsonNode *root;
+        JsonGenerator *gen;
+        char *json_str;
 
         ecdata.personal = personal;
         ecdata.after    = after;
