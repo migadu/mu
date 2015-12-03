@@ -278,10 +278,14 @@ each_contact_json (const char *email, const char *name)
 
   builder = json_builder_new ();
   json_builder_begin_object (builder);
-  json_builder_set_member_name (builder, "name");
-  json_builder_add_string_value (builder, name);
-  json_builder_set_member_name (builder, "address");
-  json_builder_add_string_value (builder, email);
+  if (name) {
+    json_builder_set_member_name (builder, "name");
+    json_builder_add_string_value (builder, name);
+  }
+  if (email) {
+    json_builder_set_member_name (builder, "address");
+    json_builder_add_string_value (builder, email);
+  }
   json_builder_end_object (builder);
 
 
