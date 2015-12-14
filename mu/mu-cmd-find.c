@@ -701,7 +701,7 @@ get_message_json (MuMsg *msg)
   json_builder_set_member_name (builder, "path");
   json_builder_add_string_value (builder, mu_msg_get_path (msg));
 
-  json_builder_set_member_name (builder, "maildir");
+  json_builder_set_member_name (builder, "folder");
   json_builder_add_string_value (builder, mu_msg_get_maildir (msg));
 
   json_builder_set_member_name (builder, "size");
