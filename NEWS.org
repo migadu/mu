@@ -1,7 +1,24 @@
 #+STARTUP:showall
-
 * NEWS (user visible changes)
 
+** 0.9.16
+
+*** Release
+
+    2015-01-20: Release from the 0.9.15 series
+
+*** Contributors:
+
+     Adam Sampson, Ævar Arnfjörð Bjarmason, Bar Shirtcliff,
+     Charles-H. Schulz, Clément Pit--Claudel, Damien Cassou, Declan
+     Qian, Dima Kogan, Dirk-Jan C. Binnema, Foivos S. Zakkak, Hinrik
+     Örn Sigurðsson, Jeroen Tiebout, JJ Asghar, Jonas Bernoulli, Jun
+     Hao, Martin Yrjölä, Maximilian Matthé, Piotr Trojanek, prsarv,
+     Thierry Volpiatto, Titus von der Malsburg
+
+     (and of course all people who reported issues, provided
+     suggestions etc.)
+     
 ** 0.9.15
 
    - bump version to 0.9.15. From now on, odd minor version numbers
@@ -27,7 +44,33 @@
    - when removing the "In-reply-to" header from replies, mu4e will
      also remove the (hidden) References header, effectively creating
      a new message-thread.
-  
+   - implement 'mu4e-context', for defining and switching between
+     various contexts, which are groups of settings. This can be used
+     for instance for switch between e-mail accounts. See the section
+     in the manual for details.
+   - correctly decode mailing-list headers
+   - allow for "fancy" mark-characters; and improve the default set
+   - by default, the maildirs are no longer cached; please see the
+     variable ~mu4e-cache-maildir-list~ if you have a lot of maildirs
+     and it gets slow.
+   - change the default value for
+     ~org-mu4e-link-query-in-headers-mode~ to ~nil~, ie. by default
+     link to the message, not the query, as this is usually more useful
+     behavior.
+   - overwrite target message files that already exist, rather than
+     erroring out.
+   - set mu4e-view-html-plaintext-ratio-heuristic to 5, as 10 was too
+     high to detect some effectively html-only messages
+   - add mu4e-view-toggle-html (keybinding: 'h') to toggle between
+     text and html display. The existing 'mu4e-view-toggle-hide-cited'
+     gets the new binding '#'.
+   - add a customization variable `mu4e-view-auto-mark-as-read'
+     (defaults to t); if set to nil, mu4e won't mark messages as read
+     when you open them. This can be useful on read-only file-systems,
+     since marking-as-read implies a file-move operation.
+   - use smaller chunks for mu server on Cygwin, allowing for better
+     mu4e support there.
+
 ** 0.9.13
 
 *** contributors
@@ -39,24 +82,24 @@
 
     (and of course all people who reported issues, provided
     suggestions etc.)
-    
+
 *** mu/mu4e/guile
 
     - NEWS (this file) is now visible from within mu4e – "N" in the main-menu.
-      
+
     - make `mu4e-headers-sort-field', `mu4e-headers-sort-direction'
       public (that, is change the prefix from mu4e~ to mu4e-), so
       users can manipulate them
-      
+
     - make it possible the 'fancy' (unicode) characters separately for
       headers and marks (see the variable `mu4e-use-fancy-chars'.)
-      
+
     - allow for composing in a separate frame (see
       `mu4e-compose-in-new-frame')
-      
+
     - add the `:thread-subject' header field, for showing the subject
       for a thread only once. So, instead of (from the manual):
-      
+
       #+BEGIN_EXAMPLE
 06:32        Nu    To Edmund Dantès    GstDev       + Re: Gstreamer-V4L...
 15:08        Nu    Abbé Busoni         GstDev         + Re: Gstreamer-V...
@@ -69,35 +112,35 @@
 2013-03-18   Ss    Baron Danglars      GuileUsr   | Guile-SDL 0.4.2 ava...
 End of search results
       #+END_EXAMPLE
-      
+
       the headers list would now look something like:
       #+BEGIN_EXAMPLE
-10:26      ⭑☐   Nicolas Goaziou      Orgmode  /bulk    ◼ Re: [O] 2 issue with Include function 
-11:00      ⭑☐   Leonard Randall      Orgmode  /bulk     ┗▶  
-10:55      ⭑☐   Guillermo Rodrigu... GstDev   /bulk    ◼ Re: stop pipeline into a callback funtion. 
-12:04      ⭑☐   Enrique Ocaña Gon... GstDev   /bulk     ┗▶  
-11:27      ⭑☐   Tim Müller           GstDev   /bulk     ◼  
-09:34      ⭑☐   Robert Klein         Orgmode  /bulk    ◼ Re: [O] Agenda Tag filtering - has the behaviour changed? 
-      #+END_EXAMPLE  
-      
+10:26      ⭑☐   Nicolas Goaziou      Orgmode  /bulk    ◼ Re: [O] 2 issue with Include function
+11:00      ⭑☐   Leonard Randall      Orgmode  /bulk     ┗▶
+10:55      ⭑☐   Guillermo Rodrigu... GstDev   /bulk    ◼ Re: stop pipeline into a callback funtion.
+12:04      ⭑☐   Enrique Ocaña Gon... GstDev   /bulk     ┗▶
+11:27      ⭑☐   Tim Müller           GstDev   /bulk     ◼
+09:34      ⭑☐   Robert Klein         Orgmode  /bulk    ◼ Re: [O] Agenda Tag filtering - has the behaviour changed?
+      #+END_EXAMPLE
+
       This is a feature known from e.g. `mutt' and `gnus` and many
       other clients, and can be enabled by customizing
       `mu4e-headers-fields' (replacing `:subject' with `:thread-subject')
-      
+
       It's not the default yet, but may become so in the future.
-     
+
     - add some spam-handling actions to mu4e-contrib.el
-      
+
     - mu4e now targets org 8.x, which support for previous versions
       relegated to `org-old-mu4e.el`. Some of the new org-features are
       improved capture templates.
-      
+
     - updates to the documentation, in particular about using BBDB.
-           
+
     - improved URL-handling (use emacs built-in functionality)
-    
+
     - many bug fixes, including some crash fixes on BSD
-      
+
 *** guile
 
     – add --delete option to the find-dups scripts, to automatically
@@ -116,7 +159,6 @@ End of search results
     - provide fake message-ids for messages without it; fixes #183
     - allow showing tags in 'mu find' output
     - fix CSV quoting
-    - 
 
 *** mu4e
 

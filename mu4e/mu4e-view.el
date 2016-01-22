@@ -1,6 +1,6 @@
 ;;; mu4e-view.el -- part of mu4e, the mu mail user agent
 ;;
-;; Copyright (C) 2011-2015 Dirk-Jan C. Binnema
+;; Copyright (C) 2011-2016 Dirk-Jan C. Binnema
 
 ;; Author: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
 ;; Maintainer: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
@@ -40,6 +40,7 @@
 (require 'epa)
 (require 'epg)
 (require 'thingatpt)
+(require 'calendar)
 
 (eval-when-compile (byte-compile-disable-warning 'cl-functions))
 (require 'cl)
@@ -151,6 +152,14 @@ The first letter of NAME is used as a shortcut character.")
     map)
   "Keymap used in the \"Attachements\" header field.")
 
+(defcustom mu4e-view-auto-mark-as-read t
+  "Automatically mark messages are 'read' when you read
+them. This is typically the expected behavior, but can be turned
+off, for example when using a read-only file-system."
+  :type 'boolean
+  :group 'mu4e-view)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -202,7 +211,8 @@ found."
 	    (:subject  (mu4e~view-construct-header field fieldval))
 	    (:path     (mu4e~view-construct-header field fieldval))
 	    (:maildir  (mu4e~view-construct-header field fieldval))
-	    ((:flags :tags) (mu4e~view-construct-flags-tags-header field fieldval))
+	    ((:flags :tags) (mu4e~view-construct-flags-tags-header
+			      field fieldval))
 
 	    ;; contact fields
 	    (:to       (mu4e~view-construct-contacts-header msg field))
@@ -274,12 +284,12 @@ marking if it still had that."
 	    (if embedded
 	      (mu4e~view-embedded-winbuf)
 	      (get-buffer-create mu4e~view-buffer-name))))
-    ;; note: mu4e~view-mark-as-read will pseudo-recursively call mu4e-view again
-    ;; by triggering mu4e~view again as it marks the message as read
+    ;; note: mu4e~view-mark-as-read-maybe will pseudo-recursively call mu4e-view
+    ;; again by triggering mu4e~view again as it marks the message as read
     (with-current-buffer buf
       (switch-to-buffer buf)
       (setq mu4e~view-msg msg)
-      (when (or embedded (not (mu4e~view-mark-as-read msg)))
+      (when (or embedded (not (mu4e~view-mark-as-read-maybe msg)))
 	(let ((inhibit-read-only t))
 	  (erase-buffer)
 	  (mu4e~delete-all-overlays)
@@ -421,8 +431,9 @@ add text-properties to VAL."
   (let* ((parts (mu4e-message-field msg :parts))
 	 (verdicts
 	  (remove-if 'null
-		     (mapcar (lambda (part) (mu4e-message-part-field part :decryption))
-			     parts)))
+	    (mapcar (lambda (part)
+		      (mu4e-message-part-field part :decryption))
+	      parts)))
 	 (succeeded (remove-if (lambda (v) (eq v 'failed)) verdicts))
 	 (failed (remove-if (lambda (v) (eq v 'succeeded)) verdicts))
 	 (succ (when succeeded
@@ -529,7 +540,6 @@ FUNC should be a function taking two arguments:
   (dolist (part (mu4e-msg-field msg :parts))
     (funcall func msg part)))
 
-
 (defvar mu4e-view-mode-map nil
   "Keymap for \"*mu4e-view*\" buffers.")
 (unless mu4e-view-mode-map
@@ -543,7 +553,7 @@ FUNC should be a function taking two arguments:
 
       ;; note, 'z' is by-default bound to 'bury-buffer'
       ;; but that's not very useful in this case
-      (define-key map "z" 'mu4e~view-quit-buffer)
+      (define-key map "z" 'ignore)
 
       (define-key map "s" 'mu4e-headers-search)
       (define-key map "S" 'mu4e-view-search-edit)
@@ -565,6 +575,7 @@ FUNC should be a function taking two arguments:
 
       (define-key map "g" 'mu4e-view-go-to-url)
       (define-key map "k" 'mu4e-view-save-url)
+      (define-key map "f" 'mu4e-view-fetch-url)
 
       (define-key map "F" 'mu4e-compose-forward)
       (define-key map "R" 'mu4e-compose-reply)
@@ -575,6 +586,8 @@ FUNC should be a function taking two arguments:
       (define-key map "|" 'mu4e-view-pipe)
       (define-key map "a" 'mu4e-view-action)
 
+      (define-key map ";" 'mu4e-context-switch)
+      
       ;; toggle header settings
       (define-key map "O" 'mu4e-headers-change-sorting)
       (define-key map "P" 'mu4e-headers-toggle-threading)
@@ -637,7 +650,8 @@ FUNC should be a function taking two arguments:
 
       ;; misc
       (define-key map "w" 'visual-line-mode)
-      (define-key map "h" 'mu4e-view-toggle-hide-cited)
+      (define-key map "#" 'mu4e-view-toggle-hide-cited)
+      (define-key map "h" 'mu4e-view-toggle-html)
       (define-key map (kbd "M-q") 'mu4e-view-fill-long-lines)
 
       ;; next 3 only warn user when attempt in the message view
@@ -660,6 +674,8 @@ FUNC should be a function taking two arguments:
 	(define-key menumap [sepa0] '("--"))
 	(define-key menumap [wrap-lines]
 	  '("Toggle wrap lines" . visual-line-mode))
+	(define-key menumap [toggle-html]
+	  '("Toggle view-html" . mu4e-view-toggle-html))
 	(define-key menumap [hide-cited]
 	  '("Toggle hide cited" . mu4e-view-toggle-hide-cited))
 	(define-key menumap [raw-view]
@@ -674,6 +690,11 @@ FUNC should be a function taking two arguments:
 	  '("Open attachment" . mu4e-view-open-attachment))
 	(define-key menumap [extract-att]
 	  '("Extract attachment" . mu4e-view-save-attachment))
+
+	(define-key menumap [save-url]
+	  '("Save URL to kill-ring" . mu4e-view-save-url))
+	(define-key menumap [fetch-url]
+	  '("Fetch URL" . mu4e-view-fetch-url))
 	(define-key menumap [goto-url]
 	  '("Visit URL" . mu4e-view-go-to-url))
 
@@ -701,11 +722,8 @@ FUNC should be a function taking two arguments:
 	  '("Search bookmark" . mu4e-headers-search-bookmark))
 	(define-key menumap [jump]
 	  '("Jump to maildir" . mu4e~headers-jump-to-maildir))
-	(define-key menumap [refresh]
-	  '("Refresh" . mu4e-headers-rerun-search))
 	(define-key menumap [search]
 	  '("Search" . mu4e-headers-search))
-
 
 	(define-key menumap [sepa4] '("--"))
 	(define-key menumap [next]  '("Next" . mu4e-view-headers-next))
@@ -732,24 +750,26 @@ FUNC should be a function taking two arguments:
   (make-local-variable 'mu4e~view-attach-map)
   (make-local-variable 'mu4e~view-cited-hidden)
 
-  (setq buffer-undo-list t) ;; don't record undo info
-
+  ;; show context in mode-string
+  (set (make-local-variable 'global-mode-string) '(:eval (mu4e-context-label))) 
+ 
+  (setq buffer-undo-list t);; don't record undo info
+     
   ;; autopair mode gives error when pressing RET
   ;; turn it off
   (when (boundp 'autopair-dont-activate)
     (setq autopair-dont-activate t)))
 
-(defun mu4e~view-mark-as-read (msg)
+(defun mu4e~view-mark-as-read-maybe (msg)
   "Clear the message MSG New/Unread status and set it to Seen.
 If the message is not New/Unread, do nothing. Evaluates to t if it
 triggers any changes, nil otherwise. If this function does any
 changes, it triggers a refresh."
-  (when msg
+  (when (and mu4e-view-auto-mark-as-read msg)
     (let ((flags (mu4e-message-field msg :flags))
 	   (msgid (mu4e-message-field msg :message-id))
 	   (docid (mu4e-message-field msg :docid)))
-      ;; attached (embedded) messages don't have docids; leave them alone
-      ;; is it a new message
+      ;; attached (embedded) messages don't have docids; leave them alone if it is a new message
       (when (and docid (or (member 'unread flags) (member 'new flags)))
 	;; mark /all/ messages with this message-id as read, so all copies of
 	;; this message will be marked as read.
@@ -801,8 +821,8 @@ If the url is mailto link, start writing an email to that address."
 
 (defvar mu4e~view-beginning-of-url-regexp
   "https?\\://\\|mailto:"
-  "Regexp that matches the beginning of http:/https:/mailto: URLs; match-string 1
-will contain the matched URL, if any.")
+  "Regexp that matches the beginning of http:/https:/mailto:
+URLs; match-string 1 will contain the matched URL, if any.")
 
 ;; this is fairly simplistic...
 (defun mu4e~view-make-urls-clickable ()
@@ -912,6 +932,12 @@ the new docid. Otherwise, return nil."
     (mu4e-view-refresh)
     (mu4e~view-hide-cited)))
 
+(defun mu4e-view-toggle-html ()
+  "Toggle html-display of the message body (if any)."
+  (interactive)
+  (setq mu4e-view-prefer-html (not mu4e-view-prefer-html)) 
+  (mu4e-view-refresh)) 
+
 (defun mu4e-view-refresh ()
   "Redisplay the current message."
   (interactive)
@@ -935,22 +961,31 @@ matching messages with that mark."
   (interactive)
   (mu4e~view-in-headers-context (mu4e-headers-mark-pattern)))
 
-(defun mu4e-view-mark-thread ()
-  "Ask user for a kind of mark (move, delete etc.), and apply it to
-all messages in the thread at point in the headers view."
+(defun mu4e-view-mark-thread (&optional markpair)
+  "Ask user for a kind of mark (move, delete etc.), and apply it
+to all messages in the thread at point in the headers view. The
+optional MARKPAIR can also be used to provide the mark
+selection."
   (interactive)
-  (mu4e~view-in-headers-context (mu4e-headers-mark-thread)))
+  (mu4e~view-in-headers-context
+   (if markpair (mu4e-headers-mark-thread nil markpair)
+       (call-interactively 'mu4e-headers-mark-thread))))
 
-(defun mu4e-view-mark-subthread ()
-  "Ask user for a kind of mark (move, delete etc.), and apply it to
-all messages in the subthread at point in the headers view."
+(defun mu4e-view-mark-subthread (&optional markpair)
+  "Ask user for a kind of mark (move, delete etc.), and apply it
+to all messages in the subthread at point in the headers view.
+The optional MARKPAIR can also be used to provide the mark
+selection."
   (interactive)
-  (mu4e~view-in-headers-context (mu4e-headers-mark-subthread)))
+  (mu4e~view-in-headers-context
+   (if markpair (mu4e-headers-mark-subthread markpair)
+     (mu4e-headers-mark-subthread))))
 
 (defun mu4e-view-search-narrow ()
   "Run `mu4e-headers-search-narrow' in the headers buffer."
   (interactive)
-  (mu4e~view-in-headers-context (call-interactively 'mu4e-headers-search-narrow)))
+  (mu4e~view-in-headers-context
+    (call-interactively 'mu4e-headers-search-narrow)))
 
 (defun mu4e-view-search-edit ()
   "Run `mu4e-headers-search-edit' in the headers buffer."
@@ -1077,7 +1112,8 @@ If ATTNUM is nil ask for the attachment number."
 	(and (file-exists-p fpath)
 	  (not (y-or-n-p (mu4e-format "Overwrite '%s'?" fpath))))))
     (mu4e~proc-extract
-      'save (mu4e-message-field msg :docid) index mu4e-decryption-policy fpath)))
+      'save (mu4e-message-field msg :docid)
+      index mu4e-decryption-policy fpath)))
 
 
 (defun mu4e-view-save-attachment-multi (&optional msg)
@@ -1108,9 +1144,11 @@ attachments, but as this is the default, you may not need it."
                 (setq fpath (expand-file-name (concat attachdir fname) path))
                 (setq retry
                       (and (file-exists-p fpath)
-                           (not (y-or-n-p (mu4e-format "Overwrite '%s'?" fpath))))))
+			(not (y-or-n-p
+			       (mu4e-format "Overwrite '%s'?" fpath))))))
               (mu4e~proc-extract
-               'save (mu4e-message-field msg :docid) index mu4e-decryption-policy fpath))))
+		'save (mu4e-message-field msg :docid)
+		index mu4e-decryption-policy fpath))))
       (dolist (num attachnums)
         (mu4e-view-save-attachment-single msg num)))))
 
@@ -1140,7 +1178,7 @@ If ATTNUM is nil ask for the attachment number."
       ;; send the docid as parameter (4th arg); we'll get this back from the
       ;; server, and use it to determine the parent message (ie., the current
       ;; message) when showing the embedded message/rfc822, and return to the
-      ;; current message when quiting that one.
+      ;; current message when quitting that one.
       (mu4e~view-temp-action docid index "mu4e" docid)
       ;; otherwise, open with the default program (handled in mu-server
       (mu4e~proc-extract 'open docid index mu4e-decryption-policy))))
@@ -1223,8 +1261,8 @@ attachments) in response to a (mu4e~proc-extract 'temp ... )."
     ((string= what "pipe")
       ;; 'param' will be the pipe command, path the infile for this
       (mu4e-process-file-through-pipe path param))
-    ;; if it's mu4e, it's some embedded message; 'param' may contain the docid of
-    ;; the parent message.
+    ;; if it's mu4e, it's some embedded message; 'param' may contain the docid
+    ;; of the parent message.
     ((string= what "mu4e")
       ;; remember the mapping path->docid, which maps the path of the embedded
       ;; message to the docid of its parent
@@ -1354,6 +1392,18 @@ to save a range of URLs."
     (lambda (url)
       (kill-new url)
       (mu4e-message "Saved %s to the kill-ring" url))))
+
+(defun mu4e-view-fetch-url (&optional multi)
+  "Offer to fetch (download) urls(s). If MULTI (prefix-argument) is nil,
+download a single one, otherwise, offer to fetch a range of
+URLs. The urls are fetched to `mu4e-attachment-dir'."
+  (interactive "P")
+  (mu4e~view-handle-urls "URL to fetch" multi
+    (lambda (url)
+      (let ((target (concat (mu4e~get-attachment-dir url) "/"
+		      (file-name-nondirectory url))))
+	(url-copy-file url target)
+      (mu4e-message "Fetched %s -> %s" url target)))))
 
 (defun mu4e~view-handle-urls (prompt multi urlfunc)
   "If MULTI is nil, apply URLFUNC to a single uri, otherwise, apply

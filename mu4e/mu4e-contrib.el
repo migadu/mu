@@ -1,6 +1,6 @@
 ;;; mu4e-contrib.el -- part of mu4e, the mu mail user agent
 ;;
-;; Copyright (C) 2013 Dirk-Jan C. Binnema
+;; Copyright (C) 2013-2016 Dirk-Jan C. Binnema
 
 ;; This file is not part of GNU Emacs.
 ;;
@@ -38,6 +38,16 @@
   (interactive)
   (mu4e-headers-mark-all-unread-read)
   (mu4e-mark-execute-all t))
+
+;;;
+
+(defun mu4e-headers-mark-all ()
+  "Mark all messages within current query results and ask user to execute which action."
+  (interactive)
+  (mu4e-headers-mark-for-each-if
+   (cons 'something nil)
+   (lambda (msg param) t))
+  (mu4e-mark-execute-all))
 
 ;;;
 

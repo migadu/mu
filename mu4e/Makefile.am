@@ -1,4 +1,4 @@
-## Copyright (C) 2008-2013 Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
+## Copyright (C) 2008-2016 Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ mu4e_TEXINFOS=fdl.texi
 dist_lisp_LISP=			\
 	mu4e-actions.el		\
 	mu4e-compose.el		\
+	mu4e-context.el		\
 	mu4e-contrib.el		\
 	mu4e-draft.el		\
 	mu4e-headers.el		\

@@ -1,6 +1,6 @@
 ;;; mu4e-actions.el -- part of mu4e, the mu mail user agent
 ;;
-;; Copyright (C) 2011-2012 Dirk-Jan C. Binnema
+;; Copyright (C) 2011-2016 Dirk-Jan C. Binnema
 
 ;; Author: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
 ;; Maintainer: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
@@ -234,7 +234,7 @@ store your org-contacts."
 	  (maildir (mu4e-message-field msg :maildir))
 	  (oldtags (mu4e-message-field msg :tags))
 	  (header  mu4e-action-tags-header)
-	  (sep     (cond ((string= header "Keywords") " ")
+	  (sep     (cond ((string= header "Keywords") ", ")
 		     ((string= header "X-Label") " ")
 		     ((string= header "X-Keywords") ", ")
 		     (t ", ")))

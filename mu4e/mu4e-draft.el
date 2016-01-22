@@ -1,6 +1,6 @@
 ;; mu4e-draft.el -- part of mu4e, the mu mail user agent for emacs
 ;;
-;; Copyright (C) 2011-2012 Dirk-Jan C. Binnema
+;; Copyright (C) 2011-2016 Dirk-Jan C. Binnema
 
 ;; Author: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
 ;; Maintainer: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
@@ -83,8 +83,8 @@ current window."
 
 (defun mu4e~draft-cite-original (msg)
   "Return a cited version of the original message MSG as a plist.
-This function uses gnus' `mu4e-compose-cite-function', and as such
-all its settings apply."
+This function uses `mu4e-compose-cite-function', and as such all
+its settings apply."
   (with-temp-buffer
     (when (fboundp 'mu4e-view-message-text) ;; keep bytecompiler happy
       (let ((mu4e-view-date-format "%Y-%m-%dT%T%z"))
@@ -245,8 +245,7 @@ separator is never written to the message file. Also see
 `mu4e-remove-mail-header-separator'."
   ;; we set this here explicitly, since (as it has happened) a wrong
   ;; value for this (such as "") breaks address completion and other things
-  (set (make-local-variable 'mail-header-separator)
-    (purecopy "--text follows this line--"))
+  (set (make-local-variable 'mail-header-separator) "--text follows this line--")
   (put 'mail-header-separator 'permanent-local t)
   (save-excursion
     ;; make sure there's not one already
@@ -280,7 +279,7 @@ never hits the disk. Also see `mu4e~draft-insert-mail-header-separator."
 	(replace-match "")))))
 
 
-(defun mu4e~draft-user-wants-reply-all (origmsg)
+(defun mu4e~draft-reply-all-p (origmsg)
   "Ask user whether she wants to reply to *all* recipients.
 If there is just one recipient of ORIGMSG do nothing."
   (let* ((recipnum
@@ -316,10 +315,9 @@ You can append flags."
 (defun mu4e~draft-common-construct ()
   "Construct the common headers for each message."
   (concat
-   (mu4e~draft-header "User-agent" mu4e-user-agent-string)
+    (mu4e~draft-header "User-agent" mu4e-user-agent-string)
    (when mu4e-compose-auto-include-date
      (mu4e~draft-header "Date" (message-make-date)))))
-
 
 (defconst mu4e~draft-reply-prefix "Re: "
   "String to prefix replies with.")
@@ -333,7 +331,7 @@ fields will be the same as in the original."
 	     (+ (length (mu4e~draft-create-to-lst origmsg))
 	       (length (mu4e~draft-create-cc-lst origmsg t))))
 	  ;; reply-to-self implies reply-all
-	  (reply-all (or reply-to-self (mu4e~draft-user-wants-reply-all origmsg)))
+	  (reply-all (or reply-to-self (mu4e~draft-reply-all-p origmsg)))
 	  (old-msgid (plist-get origmsg :message-id))
 	  (subject
 	    (concat mu4e~draft-reply-prefix

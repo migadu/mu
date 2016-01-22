@@ -1,6 +1,6 @@
 ;;; mu4e-vars.el -- part of mu4e, the mu mail user agent
 ;;
-;; Copyright (C) 2011-2013 Dirk-Jan C. Binnema
+;; Copyright (C) 2011-2016 Dirk-Jan C. Binnema
 
 ;; Author: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
 ;; Maintainer: Dirk-Jan C. Binnema <djcb@djcbsoftware.nl>
@@ -114,13 +114,11 @@ better with e.g. offlineimap."
   :group 'mu4e
   :safe 'booleanp)
 
-
 (defcustom mu4e-attachment-dir (expand-file-name "~/")
   "Default directory for saving attachments.
 This can be either a string (a file system path), or a function
 that takes a filename and the mime-type as arguments, and returns
-the attachment dir. See Info node `(mu4e) Opening and saving
-attachments' for details."
+the attachment dir. See Info node `(mu4e) Attachments' for details."
   :type 'directory
   :group 'mu4e
   :safe 'stringp)
@@ -141,11 +139,11 @@ as per RFC531."
   'mu4e-user-mail-address-list "0.9.9.x")
 
 (defcustom mu4e-use-fancy-chars nil
-  "Whether to use fancy (non-ascii) characters for marks and/or threads."
-  :type '(choice (const :tag "Do not use fancy chars" nil)
-                 (const :tag "Use fancy chars everywhere" t)
-                 (const :tag "Use fancy chars only for threads" threads)
-                 (const :tag "Use fancy chars only for marks" marks))
+  "Whether to use fancy (Unicode) characters for marks and
+threads. You can customize the exact fancy characters used with
+`mu4e-marks' and various `mu4e-headers-..-mark' and
+`mu4e-headers..-prefix' variables."
+  :type 'boolean
   :group 'mu4e)
 
 (defcustom mu4e-date-format-long "%c"
@@ -218,6 +216,32 @@ Suggested possible values are:
   :options '(completing-read ido-completing-read)
   :group 'mu4e)
 
+(defcustom mu4e-context-policy 'ask-if-none
+  "The policy to determine the context when entering the mu4e main view.
+
+If the value is `always-ask', ask the user unconditionally.
+
+In all other cases, if any context matches (using its match
+function), this context is used. Otherwise, if none of the
+contexts match, we have the following choices:
+
+- `pick-first': pick the first of the contexts available (ie. the default)
+- `ask': ask the user
+- `ask-if-none': ask if there is no context yet, otherwise leave it as it is
+-  nil: return nil; leaves the current context as is.
+
+Also see `mu4e-compose-context-policy'."
+  :type '(choice
+	   (const :tag "Always ask what context to use, even if one matches"
+	     'always-ask)
+	   (const :tag "Ask if none of the contexts match" 'ask)
+	   (const :tag "Ask when there's no context yet" 'ask-if-none)
+	   (const :tag "Pick the first context if none match" 'pick-first)
+	   (const :tag "Don't change the context when none match" nil)
+  :safe 'symbolp
+  :group 'mu4e))
+
+
 ;; crypto
 (defgroup mu4e-crypto nil
   "Crypto-related settings."
@@ -283,10 +307,21 @@ their canonical counterpart; useful as an example."
       (list :name name :mail mail)))
 
 (defcustom mu4e-contact-rewrite-function nil
-  "Function to be used for when processing contacts and rewrite
-them, for example you may use this for correcting typo's, changed
-names and adapting addresses or names to company policies. As an
-example of this, see `mu4e-contact-identity'."
+  "Either nil or a function to be used for when processing
+contacts and rewrite them or remove them altogether.
+
+If the function receives the contact as a list of the form
+     (:name NAME :mail EMAIL ... other properties ... )
+(other properties may be there as well)
+
+The function should return either:
+ - nil: remove this contact, or
+- the rewritten cell, or
+- the existing cell as-is
+
+For rewriting, it is recommended to use `plist-put' to set the
+changed parameters, so the other properties stay in place. Those
+are needed for sorting the contacts."
   :type 'function
   :group 'mu4e-compose)
 
@@ -737,14 +772,11 @@ for an example.")
 (defvar mu4e~view-headers-buffer nil
   "The headers buffer connected to this view.")
 
-(defvar mu4e~contacts-for-completion nil
-  "List of contacts (ie. 'name <e-mail>').
-This is used by the completion functions in mu4e-compose, filled
-when mu4e starts.")
-
-(defvar mu4e~contact-list nil
-  "List of contacts, where each contact is a plist
-  (:name NAME :mail EMAIL :tstamp TIMESTAMP :freq FREQUENCY).")
+(defvar mu4e~contacts nil
+  "Hash of that maps contacts (ie. 'name <e-mail>') to an integer
+with their sort order. We need to keep this information around to
+quickly re-sort subsets of the contacts in the completions function in
+mu4e-compose.")
 
 (defvar mu4e~server-props nil
   "Properties we receive from the mu4e server process.
@@ -752,7 +784,6 @@ when mu4e starts.")
 
 (defvar mu4e~headers-last-query nil
   "The present (most recent) query.")
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
